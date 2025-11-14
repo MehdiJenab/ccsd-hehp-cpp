@@ -1,0 +1,41 @@
+# Build artifacts
+/build
+/bin
+/obj
+/CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Compiled objects
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# Executables
+ccsd_code
+*.exe
+
+# Editor & IDE configs
+*.swp
+*.swo
+*.idea
+.vscode/
+*.code-workspace
+
+# Python caches (if used anywhere)
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated data
+*.out
+*.tmp
