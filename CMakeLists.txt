@@ -176,3 +176,41 @@ if(USE_JSON AND JANSSON_LIBRARY)
 endif()
 message(STATUS "  Build testing: ${BUILD_TESTING}")
 message(STATUS "")
+
+#---------------------------------------------------------------------------
+# Documentation with Doxygen
+#---------------------------------------------------------------------------
+option(BUILD_DOCUMENTATION "Build API documentation with Doxygen" ON)
+
+if(BUILD_DOCUMENTATION)
+    find_package(Doxygen
+        OPTIONAL_COMPONENTS dot mscgen dia)
+    
+    if(DOXYGEN_FOUND)
+        # Set Doxygen input and output directories
+        set(DOXYGEN_INPUT_DIR ${PROJECT_SOURCE_DIR})
+        set(DOXYGEN_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/docs)
+        set(DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/html/index.html)
+        
+        # Copy Doxyfile to build directory
+        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile 
+                       ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+        
+        # Create output directory
+        file(MAKE_DIRECTORY ${DOXYGEN_OUTPUT_DIR})
+        
+        # Custom target to build documentation
+        add_custom_target(docs
+            COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMENT "Generating API documentation with Doxygen"
+            VERBATIM)
+        
+        message(STATUS "Doxygen found - documentation can be built with 'make docs'")
+        if(DOXYGEN_DOT_FOUND)
+            message(STATUS "  Graphviz dot found - graphs will be generated")
+        endif()
+    else()
+        message(WARNING "Doxygen not found - documentation cannot be built")
+    endif()
+endif()

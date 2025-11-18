@@ -39,3 +39,10 @@ Thumbs.db
 # Generated data
 *.out
 *.tmp
+
+# Documentation build artifacts (Doxygen, etc.)
+docs/html/
+docs/latex/
+docs/xml/
+docs/man/
+docs/rtf/
