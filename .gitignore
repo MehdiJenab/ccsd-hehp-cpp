@@ -46,3 +46,6 @@ docs/latex/
 docs/xml/
 docs/man/
 docs/rtf/
+
+# auxiliary files
+aux*.*
