@@ -47,6 +47,23 @@ mpic++ ccsd_code.cpp -o ccsd_code
 
 mpirun -np 4 ./ccsd_code
 
+If you are developing on a laptop or a node with fewer available MPI slots than
+you wish to test, add `--oversubscribe` to the `mpirun` invocation so OpenMPI
+allows the extra ranks.
+
+## Automated Regression Test
+
+Build the executable and then run:
+
+```
+python3 tests/run_mpi_regression.py
+```
+
+The script executes `ccsd_code` with 2, 4, and 8 MPI ranks (using
+`--oversubscribe` by default) and verifies that both the correlation and total
+CCSD energies match the expected reference values. Adjust the process counts,
+binary path, or tolerance with `--np`, `--executable`, and `--tol` if needed.
+
 ## Input Format (config.json)
 
 {
