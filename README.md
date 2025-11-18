@@ -36,6 +36,28 @@ config.json
 
 ## Compiling
 
+### Using Make (recommended)
+
+```
+make
+```
+
+Variables are overrideable, so you can select different compilers or flags:
+
+```
+make CXX=mpicxx CXXFLAGS="-O3 -std=c++20"
+```
+
+JSON parsing is enabled by default (links against `-ljansson`). When building a
+variant of the code that does not use JSON (e.g., while experimenting with
+`ParameterClass_NoJson.h`), run:
+
+```
+make USE_JSON=0
+```
+
+### Manual compilation
+
 With JSON:
 mpic++ ccsd_code.cpp -o ccsd_code -ljansson
 
@@ -57,6 +79,8 @@ Build the executable and then run:
 
 ```
 python3 tests/run_mpi_regression.py
+# or simply
+make test
 ```
 
 The script executes `ccsd_code` with 2, 4, and 8 MPI ranks (using

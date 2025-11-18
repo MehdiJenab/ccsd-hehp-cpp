@@ -1,27 +1,5 @@
 
 
-/* 
- |=============================================================================
- | CCSD in C++
- | Mehdi Jenab, mehdi.h.jenab@gmail.com
- |
- |
- | to install jansson.h, documentation is available at: 
- |		https://jansson.readthedocs.io/en/2.1/gettingstarted.html
- | 
- | to install OpenMPI:
- |		sudo apt install libopenmpi-dev
- |		sudo apt install openmpi-bin
- |
- | to compile the code: 
- | 		$ mpic++ ccsd_code.cpp -o ccsd_code_p -ljansson
- | to run the code: 
- |		$mpirun -n #number_cpu ccsd_code_p, 
- | #number_cpu= number of CPUs available for executing the code
- |==============================================================================  
-*/
-
-
 #include <cmath> 
 #include <vector>
 #include <map>
