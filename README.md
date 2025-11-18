@@ -1,95 +1,135 @@
 # CCSD in C++ with MPI Parallelization
 
-This repository provides a C++ implementation of Coupled Cluster with Singles and Doubles (CCSD) for the HeH⁺ molecule, translated from the educational Python code published by Joshua Goings on his CCSD tutorial webpage.
-The implementation closely follows the mathematical structure and loop organization used in Goings’ Python reference, enabling transparent comparison between the two versions.
+This repository provides a C++ implementation of Coupled Cluster with Singles
+and Doubles (CCSD) for the HeH⁺ molecule, translated from the educational Python
+code published by Joshua Goings. The translation mirrors the mathematical
+structure and loop ordering of the reference so that numerical comparisons are
+straightforward.
 
 ## References
 
-T. Daniel Crawford and Henry F. Schaefer III, “An introduction to coupled cluster theory for computational chemists,” *Reviews in Computational Chemistry*, vol. 14, pp. 33–136, 2007.
-
-Original Python tutorial:
-- J. Goings, “Coupled Cluster with Singles and Doubles (CCSD) in Python,” https://joshuagoings.com/2013/07/17/coupled-cluster-with-singles-and-doubles-ccsd-in-python/
+- T. Daniel Crawford and Henry F. Schaefer III, “An introduction to coupled
+  cluster theory for computational chemists,” *Reviews in Computational
+  Chemistry*, vol. 14, pp. 33–136, 2007.
+- J. Goings, “Coupled Cluster with Singles and Doubles (CCSD) in Python,”
+  https://joshuagoings.com/2013/07/17/coupled-cluster-with-singles-and-doubles-ccsd-in-python/
 
 ## Overview
 
-The code computes the CCSD correlation energy for HeH⁺ using:
-- Custom 2D and 4D tensor containers
-- JSON input via Jansson
-- Optional MPI parallelization
-- Direct implementation of the CCSD iterative equations
+The code computes CCSD correlation energies for HeH⁺ using:
+
+- Custom 2D/4D tensor containers
+- JSON input via Jansson (optional)
+- MPI parallelization through OpenMPI
+- A direct, readable transcription of the CCSD amplitude equations
 
 ## Repository Structure
 
-ccsd_code.cpp
-include/
-  ParameterClass.h
-  ParameterClass_NoJson.h
-  VectorsClass.h
-  MpiClass.h
-config.json
+- `ccsd_code.cpp`
+- `ParameterClass.h`, `ParameterClass_NoJson.h`, `VectorsClass.h`, `MpiClass.h`
+- `config.json`
+- `tests/run_mpi_regression.py`
+- Build tooling: `Makefile`, `CMakeLists.txt`
 
 ## Dependencies
 
-- C++17 or newer
-- OpenMPI
-- Jansson library
+- C++17-capable compiler
+- OpenMPI (provides `mpic++`, `mpirun`)
+- [Jansson](https://digip.org/jansson/) (only when `USE_JSON` is enabled)
+- CMake ≥ 3.12 (if using the CMake workflow)
+ - Python 3 (optional, for regression script)
 
-## Compiling
+## Build Options
 
-### Using Make (recommended)
+Two build systems are available; both expose similar configuration knobs so you
+can pick the one that best fits your workflow.
+
+### Quick Start
 
 ```
+# Make
 make
+
+# or CMake (out-of-source)
+cmake -S . -B build
+cmake --build build
 ```
 
-Variables are overrideable, so you can select different compilers or flags:
+### Makefile workflow
+
+- `make` builds `ccsd_code` with JSON support.
+- `make run` launches `mpirun --oversubscribe -np 4 ./ccsd_code`.
+- `make test` runs the Python regression script (see below).
+- `make clean` removes the executable.
+
+Override toolchain/flags as needed:
 
 ```
-make CXX=mpicxx CXXFLAGS="-O3 -std=c++20"
+make CXX=mpicxx CXXFLAGS="-O3 -std=c++20" USE_JSON=0
 ```
 
-JSON parsing is enabled by default (links against `-ljansson`). When building a
-variant of the code that does not use JSON (e.g., while experimenting with
-`ParameterClass_NoJson.h`), run:
+Setting `USE_JSON=0` omits the `-ljansson` link; useful if you temporarily build
+against `ParameterClass_NoJson.h`.
+
+### CMake workflow
 
 ```
-make USE_JSON=0
+cmake -S . -B build -DUSE_JSON=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-### Manual compilation
+Key cache variables:
 
-With JSON:
-mpic++ ccsd_code.cpp -o ccsd_code -ljansson
+- `USE_JSON` (ON by default) – links against Jansson and defines `USE_JSON`.
+- `BUILD_TESTING` (ON by default) – enables `ctest` integration and copies
+  `config.json` plus extra input files to the build directory.
+- Standard CMake knobs such as `CMAKE_CXX_COMPILER`, `CMAKE_CXX_FLAGS`, and
+  `CMAKE_BUILD_TYPE` behave as usual. Example:
 
-Without JSON:
-replace ParameterClass.h with ParameterClass_NoJson.h
-mpic++ ccsd_code.cpp -o ccsd_code
+```
+cmake -S . -B build -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_BUILD_TYPE=Debug -DUSE_JSON=OFF
+cmake --build build --target ccsd_code
+```
+
+After configuring, run tests via:
+
+```
+cmake --build build
+cd build && ctest
+```
+
+CMake defines execution/validation tests for multiple MPI sizes, optionally
+oversubscribes when cores are scarce, and can run the Python regression script
+if Python is available.
 
 ## Running
 
+```
 mpirun -np 4 ./ccsd_code
+```
 
-If you are developing on a laptop or a node with fewer available MPI slots than
-you wish to test, add `--oversubscribe` to the `mpirun` invocation so OpenMPI
-allows the extra ranks.
+On machines with fewer slots than requested ranks, pass `--oversubscribe` so
+OpenMPI allows the extra processes.
 
-## Automated Regression Test
-
-Build the executable and then run:
+## Automated Testing
 
 ```
 python3 tests/run_mpi_regression.py
-# or simply
+# or
 make test
+# or
+(cd build && ctest)    # after configuring with CMake
 ```
 
-The script executes `ccsd_code` with 2, 4, and 8 MPI ranks (using
-`--oversubscribe` by default) and verifies that both the correlation and total
-CCSD energies match the expected reference values. Adjust the process counts,
-binary path, or tolerance with `--np`, `--executable`, and `--tol` if needed.
+The regression script and the CTest configuration both run the executable with
+multiple process counts (2, 4, 8 by default), using `--oversubscribe` to keep
+the tests portable. They assert that the reported correlation and total energies
+match the established reference values; command-line arguments (`--np`,
+`--executable`, `--tol`, etc.) let you customize the checks.
 
-## Input Format (config.json)
+## Input Format (`config.json`)
 
+```
 {
     "dim": ...,
     "Nelec": ...,
@@ -98,6 +138,7 @@ binary path, or tolerance with `--np`, `--executable`, and `--tol` if needed.
     "EN": ...,
     "integrals": [[i,j,k,l,value], ...]
 }
+```
 
 ## License
 
