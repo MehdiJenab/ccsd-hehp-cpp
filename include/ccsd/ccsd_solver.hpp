@@ -1,28 +1,20 @@
+#ifndef CCSD_CCSD_SOLVER_HPP
+#define CCSD_CCSD_SOLVER_HPP
 
-
-#include <cmath> 
-#include <vector>
+#include <chrono>
+#include <cmath>
+#include <iostream>
 #include <map>
-#include <chrono>  		// for timing C++11
+#include <vector>
 
-#include <mpi.h> 		//parallel programming
+#include <mpi.h>
 
-#include "VectorsClass.h"
-#include "ParameterClass.h"
-#include "MpiClass.h"
-#include "include/ccsd/mpi_tensor.hpp"
+#include <ccsd/mpi_session.hpp>
+#include <ccsd/mpi_tensor.hpp>
+#include <ccsd/parameters.hpp>
+#include <ccsd/tensors.hpp>
 
-// #define timing //for timing different functions
-
-
-
-
-
-
-
-
-using namespace std;
-
+using namespace std;  // pre-existing in legacy ccsd_code.cpp; preserved here
 
 struct Timer
 {
@@ -631,15 +623,4 @@ public:
 //=============================================================================
 };  // class CcsdSolver
 
-
-//=============================================================================
-int main(int argc, char** argv) {
-	ccsd::MpiSession session(&argc, &argv);
-	CcsdSolver solver;
-	solver.mpi.size = session.size();
-	solver.mpi.rank = session.rank();
-	solver.run();
-	return 0;
-}
-//=============================================================================
-
+#endif  // CCSD_CCSD_SOLVER_HPP

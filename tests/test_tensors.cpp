@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../VectorsClass.h"
+#include <ccsd/tensors.hpp>
 
 TEST_CASE("Vector2D index encoding matches legacy layout", "[tensor][2d]") {
     ccsd::Vector2D v;

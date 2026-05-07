@@ -60,12 +60,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 # Source files
-set(SOURCES ccsd_code.cpp)
-set(HEADERS
-    ParameterClass.h
-    MpiClass.h
-    VectorsClass.h
-)
+set(SOURCES apps/ccsd_code.cpp)
 
 # Create executable
 add_executable(ccsd_code ${SOURCES})
@@ -75,7 +70,9 @@ ccsd_apply_flags(ccsd_code)
 target_link_libraries(ccsd_code PRIVATE MPI::MPI_CXX nlohmann_json::nlohmann_json)
 
 # Include directories
-target_include_directories(ccsd_code PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(ccsd_code PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Installation
 install(TARGETS ccsd_code
@@ -252,7 +249,7 @@ if(BUILD_TESTING)
     # Tensor unit tests
     add_executable(test_tensors tests/test_tensors.cpp)
     target_link_libraries(test_tensors PRIVATE Catch2::Catch2WithMain)
-    target_include_directories(test_tensors PRIVATE ${CMAKE_SOURCE_DIR})
+    target_include_directories(test_tensors PRIVATE ${CMAKE_SOURCE_DIR}/include)
     ccsd_apply_flags(test_tensors)
     include(Catch)
     catch_discover_tests(test_tensors)
@@ -260,7 +257,7 @@ if(BUILD_TESTING)
     # Parameter parsing tests
     add_executable(test_parameters tests/test_parameters.cpp)
     target_link_libraries(test_parameters PRIVATE Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
-    target_include_directories(test_parameters PRIVATE ${CMAKE_SOURCE_DIR})
+    target_include_directories(test_parameters PRIVATE ${CMAKE_SOURCE_DIR}/include)
     ccsd_apply_flags(test_parameters)
     catch_discover_tests(test_parameters)
 endif()

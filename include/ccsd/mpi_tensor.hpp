@@ -2,7 +2,7 @@
 
 #include <mpi.h>
 
-#include "../../VectorsClass.h"  // T11 will switch this to <ccsd/tensors.hpp>
+#include <ccsd/tensors.hpp>
 
 namespace ccsd::mpi {
 
