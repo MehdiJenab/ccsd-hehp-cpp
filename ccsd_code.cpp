@@ -6,7 +6,6 @@
 #include <chrono>  		// for timing C++11
 
 #include <mpi.h> 		//parallel programming
-#include <jansson.h>	// to handle JSON file 
 
 #include "VectorsClass.h"
 #include "ParameterClass.h"

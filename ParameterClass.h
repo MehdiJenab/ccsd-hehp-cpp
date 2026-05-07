@@ -2,118 +2,44 @@
 #define ParameterClass_Included
 
 #include <array>
-#include <cstdlib>
-#include <iostream>
+#include <fstream>
 #include <map>
+#include <stdexcept>
+#include <string>
 
+#include <nlohmann/json.hpp>
 
-class ParameterClass{
-//=============================================================================
-	json_t* read_file_config(){
-		int dim;
-		size_t flags = 0;
-		json_error_t error;
-// 		if (rank==0){std::cout << "-----------------------------------------------------"<<std::endl;}
-		
-		//--- loading the JSON file ------------------------------------------
-		json_t* file_json = json_load_file("./config.json", flags, &error);
-		if(!file_json){
-			std::cerr << "in line " << error.line << ": " << error.text << std::endl;
-			std::exit(1);
-		}
-		//--------------------------------------------------------------------
-		
-		//--- returning the config object ------------------------------------  
-		json_t* config_json = json_object_get(file_json, "config");
-		if(!config_json){
-			std::cerr << "in line " << error.line << ": " << error.text << std::endl;
-			std::exit(1);
-		}
-		//--------------------------------------------------------------------
-		return config_json; 
-	}
-//=============================================================================
-
-//=============================================================================
-	int read_integer (int index, const char * name){
-		json_t* obj_json = json_array_get(config_json, index);
-		if (!obj_json) std::cout<<"can't catch"<<index<<" member of config="<<name <<std::endl;
-		obj_json = json_object_get(obj_json, name);
-		if (!obj_json) std::cout<<"can't catch "<<name<< " object, name and index does not match" <<std::endl;
-		return json_integer_value(obj_json);
-	}
-//=============================================================================
-
-//=============================================================================
-	double read_double (int index, const char * name){
-		json_t* obj_json = json_array_get(config_json, index);
-		if (!obj_json) std::cout<<"can't catch"<<index<<" member of config="<<name <<std::endl;
-		obj_json = json_object_get(obj_json, name);
-		if (!obj_json) std::cout<<"can't catch "<<name<< " object, name and index does not match" <<std::endl;
-		return json_real_value(obj_json);		
-	}
-//=============================================================================
-
-//=============================================================================
-	std::array<double,2> read_orbital_energy (){
-		json_t* obj_json = json_array_get(config_json, 2);
-		if (!obj_json) std::cout<<"can't catch 3 member of config" <<std::endl;
-		json_t* obj_json_arr = json_object_get(obj_json, "orbital_energy");
-		if (!obj_json) std::cout<<"can't catch orbital_energy object" <<std::endl;
-		double zero = json_real_value(json_array_get(obj_json_arr, 0));
-		double first = json_real_value(json_array_get(obj_json_arr, 1));
-		std::array<double,2> arr={zero,first};
-		return arr;
-	}
-//=============================================================================
-
-//=============================================================================
-	std::map<double,double> read_ttmo(){
-		std::map<double,double> ttmo;
-		json_t* obj_json = json_array_get(config_json, 5);
-		if (!obj_json) std::cout<<"can't catch 5 member of config" <<std::endl;
-		const json_t * json_arr = json_object_get(obj_json, "ttmo");
-		if (!json_arr) std::cout<<"can't catch ttmo object" <<std::endl;
-		size_t size = json_array_size(json_arr);
-		for (size_t i=0; i<size; i +=2){
-			double key   = json_real_value(json_array_get(json_arr, i  ));
-			double value = json_real_value(json_array_get(json_arr, i+1));
-			ttmo.insert ( std::pair<double,double>(key,value) );
-		}
-
-		return ttmo;
-	}
-//=============================================================================
-
-
-//=============================================================================
+class ParameterClass {
 public:
-	int dim; //we have two spatial basis functions in STO-3G
-	int Nelec; // we have 2 electrons in HeH+
-	json_t* config_json;
-	std::array<double,2> orbital_energy; // molecular orbital energies
-	double ENUC; // nuclear repulsion energy for HeH+ -- constant
-	double EN   ; // SCF energy
-	std::map<double,double> ttmo ; //  dictionary containing two-electron repulsion integrals
+    int dim = 0;
+    int Nelec = 0;
+    std::array<double, 2> orbital_energy{};
+    double ENUC = 0.0;
+    double EN = 0.0;
+    std::map<double, double> ttmo;
 
-//=============================================================================
-	ParameterClass(){ // constructor
-		config_json 	= read_file_config();
-		dim 			= read_integer(0,"dim");  
-		Nelec 			= read_integer(1,"Nelec");
-		orbital_energy 	= read_orbital_energy();
-		ENUC			= read_double(3,"ENUC");
-		EN				= read_double(4,"EN");
-		ttmo			= read_ttmo();
-	}
-//=============================================================================
+    explicit ParameterClass(const std::string& path = "./config.json") {
+        std::ifstream in(path);
+        if (!in) throw std::runtime_error("Cannot open " + path);
+        nlohmann::json j;
+        in >> j;
 
-//========================================================================
-	~ParameterClass(void) { //destructor
-		delete config_json;
-	}
-//========================================================================
+        dim   = j.at("dim").get<int>();
+        Nelec = j.at("Nelec").get<int>();
+
+        const auto& oe = j.at("orbital_energy");
+        if (oe.size() != 2) throw std::runtime_error("orbital_energy must have 2 entries");
+        orbital_energy[0] = oe[0].get<double>();
+        orbital_energy[1] = oe[1].get<double>();
+
+        ENUC = j.at("ENUC").get<double>();
+        EN   = j.at("EN").get<double>();
+
+        const auto& flat = j.at("ttmo");
+        for (std::size_t i = 0; i + 1 < flat.size(); i += 2) {
+            ttmo.emplace(flat[i].get<double>(), flat[i + 1].get<double>());
+        }
+    }
 };
 
-
-#endif //ParameterClass_Included
+#endif  // ParameterClass_Included

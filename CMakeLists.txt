@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Options
-option(USE_JSON "Enable JSON support with jansson library" ON)
 option(BUILD_TESTING "Build tests" ON)
 
 # ── Pass-1 modernization additions ────────────────────────────────────────────
@@ -42,13 +41,14 @@ endfunction()
 # Find MPI
 find_package(MPI REQUIRED)
 
-# Find jansson if JSON support is enabled
-if(USE_JSON)
-    find_library(JANSSON_LIBRARY jansson)
-    if(NOT JANSSON_LIBRARY)
-        message(WARNING "jansson library not found. Set USE_JSON=OFF to build without JSON support.")
-    endif()
-endif()
+# nlohmann/json (header-only, fetched at configure)
+include(FetchContent)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
 
 # Compiler flags
 if(NOT CMAKE_BUILD_TYPE)
@@ -71,14 +71,8 @@ set(HEADERS
 add_executable(ccsd_code ${SOURCES})
 ccsd_apply_flags(ccsd_code)
 
-# Link MPI
-target_link_libraries(ccsd_code PRIVATE MPI::MPI_CXX)
-
-# Link jansson if enabled and found
-if(USE_JSON AND JANSSON_LIBRARY)
-    target_link_libraries(ccsd_code PRIVATE ${JANSSON_LIBRARY})
-    target_compile_definitions(ccsd_code PRIVATE USE_JSON)
-endif()
+# Link MPI and nlohmann/json
+target_link_libraries(ccsd_code PRIVATE MPI::MPI_CXX nlohmann_json::nlohmann_json)
 
 # Include directories
 target_include_directories(ccsd_code PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -262,4 +256,11 @@ if(BUILD_TESTING)
     ccsd_apply_flags(test_tensors)
     include(Catch)
     catch_discover_tests(test_tensors)
+
+    # Parameter parsing tests
+    add_executable(test_parameters tests/test_parameters.cpp)
+    target_link_libraries(test_parameters PRIVATE Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
+    target_include_directories(test_parameters PRIVATE ${CMAKE_SOURCE_DIR})
+    ccsd_apply_flags(test_parameters)
+    catch_discover_tests(test_parameters)
 endif()
