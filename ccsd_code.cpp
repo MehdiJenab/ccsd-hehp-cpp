@@ -225,7 +225,7 @@ struct Timer
 
 //=============================================================================
 	void initialization(){
-		mpi.Initialize_MPI();
+		// MPI lifetime is now owned by ccsd::MpiSession in main().
 		#ifdef timing
  		if (mpi.rank==rank_master)	Timer timer("initialization",mpi.rank);
 		#endif
@@ -591,7 +591,10 @@ struct Timer
 
 
 //============================================================================= 
-int main() {
+int main(int argc, char** argv) {
+	ccsd::MpiSession session(&argc, &argv);
+	mpi.size = session.size();
+	mpi.rank = session.rank();
 
 	//================
 	// MAIN LOOP
@@ -599,7 +602,7 @@ int main() {
 	//================
  	std::cout.precision(10);
 
-	
+
 	double cc_en = 0, cc_en_diff = 10.0;
 	double cc_en_pre = 0;
 
@@ -638,7 +641,6 @@ int main() {
 	}
 
 
-	mpi.Finalize_MPI();
     return 0;
 }
 //============================================================================= 

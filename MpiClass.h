@@ -1,31 +1,43 @@
 #ifndef MpiClass_Included
 #define MpiClass_Included
 
+#include <mpi.h>
 
-class MpiClass {
+namespace ccsd {
 
+class MpiSession {
 public:
-	int size, rank,NODE;
-	MPI_Comm  COMM_CART;
+    MpiSession(int* argc, char*** argv) {
+        MPI_Init(argc, argv);
+        MPI_Comm_size(MPI_COMM_WORLD, &size_);
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
+    }
 
-//=============================================================================
-	void Initialize_MPI(){	
-		// Initialize the MPI environment
-		MPI_Init(NULL, NULL);
+    ~MpiSession() { MPI_Finalize(); }
 
-		// Get the number of processes
-		MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MpiSession(const MpiSession&) = delete;
+    MpiSession& operator=(const MpiSession&) = delete;
+    MpiSession(MpiSession&&) = delete;
+    MpiSession& operator=(MpiSession&&) = delete;
 
-		// Get the rank of the process
-		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	}
-//============================================================================= 
-	
-//=============================================================================
-	void Finalize_MPI(){
-		 MPI_Finalize();
-	} 
-//=============================================================================
+    [[nodiscard]] int rank() const noexcept { return rank_; }
+    [[nodiscard]] int size() const noexcept { return size_; }
+
+private:
+    int rank_ = 0;
+    int size_ = 0;
 };
 
-#endif // MpiClass_Included
+}  // namespace ccsd
+
+// Backwards-compat shim used by ccsd_code.cpp until globals are removed in T09.
+// Kept deliberately small.
+class MpiClass {
+public:
+    int size = 0;
+    int rank = 0;
+    int NODE = 0;
+    MPI_Comm COMM_CART = MPI_COMM_NULL;
+};
+
+#endif  // MpiClass_Included
