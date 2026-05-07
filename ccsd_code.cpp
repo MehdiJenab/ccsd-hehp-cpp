@@ -11,6 +11,7 @@
 #include "VectorsClass.h"
 #include "ParameterClass.h"
 #include "MpiClass.h"
+#include "include/ccsd/mpi_tensor.hpp"
 
 // #define timing //for timing different functions
 
@@ -72,7 +73,7 @@ struct Timer
 			bLoop{
 				iLoop{
 					jLoop{
-						*td.set(a,b,i,j) += spinints(i,j,a,b)/(fs(i,i) + fs(j,j) - fs(a,a) - fs(b,b));
+						td(a,b,i,j) += spinints(i,j,a,b)/(fs(i,i) + fs(j,j) - fs(a,a) - fs(b,b));
 					}
 				}
 			}
@@ -86,7 +87,7 @@ struct Timer
 		Dai.zeros();
 		aLoop {
 			iLoop{
-				*Dai.set(a,i) = fs(i,i) - fs(a,a);
+				Dai(a,i) = fs(i,i) - fs(a,a);
 			}
 		}
 		Dabij.zeros();
@@ -94,7 +95,7 @@ struct Timer
 			bLoop{
 				iLoop{
 					jLoop{
-						*Dabij.set(a,b,i,j) = fs(i,i) + fs(j,j) - fs(a,a) - fs(b,b);
+						Dabij(a,b,i,j) = fs(i,i) + fs(j,j) - fs(a,a) - fs(b,b);
 					}
 				}
 			}
@@ -150,7 +151,7 @@ struct Timer
 					for (size_t s = 1; s < dim2+1; ++s) {
 						value1 = get_value( (p+1)>>1,(r+1)>>1,(q+1)>>1,(s+1)>>1 ) * (p%2 == r%2) * (q%2 == s%2);
 						value2 = get_value( (p+1)>>1,(s+1)>>1,(q+1)>>1,(r+1)>>1 ) * (p%2 == s%2) * (q%2 == r%2);
-						*spinints.set(p-1,q-1,r-1,s-1) = value1 - value2;
+						spinints(p-1,q-1,r-1,s-1) = value1 - value2;
 					}
 				}
 			}
@@ -282,13 +283,13 @@ struct Timer
 		Fae.zeros();
 		aLoop {
 			eLoop{
-				*Fae.set(a,e) = (1 - (a == e))*fs(a,e);
+				Fae(a,e) = (1 - (a == e))*fs(a,e);
 				mLoop{
-					*Fae.set(a,e) += -0.5*fs(m,e)*ts(a,m);
+					Fae(a,e) += -0.5*fs(m,e)*ts(a,m);
 					fLoop{
-						*Fae.set(a,e) += ts(f,m)*spinints(m,a,f,e);
+						Fae(a,e) += ts(f,m)*spinints(m,a,f,e);
 						nLoop{
-							*Fae.set(a,e) += -0.5*get_taus(a,f,m,n)*spinints(m,n,e,f);
+							Fae(a,e) += -0.5*get_taus(a,f,m,n)*spinints(m,n,e,f);
 						}
 					}
 				}
@@ -303,13 +304,13 @@ struct Timer
 		Fmi.zeros();
 		mLoop {
 			iLoop {
-				*Fmi.set(m,i) = (1 - (m == i))*fs(m,i);
+				Fmi(m,i) = (1 - (m == i))*fs(m,i);
 				eLoop{
-					*Fmi.set(m,i) += 0.5*ts(e,i)*fs(m,e);
+					Fmi(m,i) += 0.5*ts(e,i)*fs(m,e);
 					nLoop{
-						*Fmi.set(m,i) += ts(e,n)*spinints(m,n,i,e);
+						Fmi(m,i) += ts(e,n)*spinints(m,n,i,e);
 						fLoop{
-							*Fmi.set(m,i) += 0.5*get_taus(e,f,i,n)*spinints(m,n,e,f);
+							Fmi(m,i) += 0.5*get_taus(e,f,i,n)*spinints(m,n,e,f);
 						}
 					}
 				}
@@ -324,10 +325,10 @@ struct Timer
 		Fme.zeros();
 		mLoop{
 			eLoop{
-				*Fme.set(m,e) = fs(m,e);
+				Fme(m,e) = fs(m,e);
 				nLoop{
 					fLoop{
-						*Fme.set(m,e) += ts(f,n)*spinints(m,n,e,f);
+						Fme(m,e) += ts(f,n)*spinints(m,n,e,f);
 					}
 				}
 			}
@@ -343,12 +344,12 @@ struct Timer
 			nLoop{
 				iLoop{
 					jLoop{
-						*Wmnij.set(m,n,i,j) = spinints(m,n,i,j);
+						Wmnij(m,n,i,j) = spinints(m,n,i,j);
 						eLoop{
-							*Wmnij.set(m,n,i,j) +=  ts(e,j)*spinints(m,n,i,e) 
+							Wmnij(m,n,i,j) +=  ts(e,j)*spinints(m,n,i,e) 
 												-ts(e,i)*spinints(m,n,j,e);
 							fLoop{
-								*Wmnij.set(m,n,i,j) += 0.25*get_tau(e,f,i,j)*spinints(m,n,e,f);
+								Wmnij(m,n,i,j) += 0.25*get_tau(e,f,i,j)*spinints(m,n,e,f);
 							}
 						}
 					}
@@ -365,12 +366,12 @@ struct Timer
 			bLoop{
 				eLoop{
 					fLoop{
-						*Wabef.set(a,b,e,f) = spinints(a,b,e,f);
+						Wabef(a,b,e,f) = spinints(a,b,e,f);
 						mLoop{
-							*Wabef.set(a,b,e,f) += -ts(b,m)*spinints(a,m,e,f) 
+							Wabef(a,b,e,f) += -ts(b,m)*spinints(a,m,e,f) 
 												+ts(a,m)*spinints(b,m,e,f);
 							nLoop{
-								*Wabef.set(a,b,e,f) += 0.25*get_tau(a,b,m,n)*spinints(m,n,e,f);
+								Wabef(a,b,e,f) += 0.25*get_tau(a,b,m,n)*spinints(m,n,e,f);
 							}
 						}
 					}
@@ -388,14 +389,14 @@ struct Timer
 			bLoop{
 				eLoop{
 					jLoop{
-						*Wmbej.set(m,b,e,j) = spinints(m,b,e,j);
+						Wmbej(m,b,e,j) = spinints(m,b,e,j);
 						fLoop{
-							*Wmbej.set(m,b,e,j) += ts(f,j)*spinints(m,b,e,f);
+							Wmbej(m,b,e,j) += ts(f,j)*spinints(m,b,e,f);
 						}
 						nLoop{
-							*Wmbej.set(m,b,e,j) += -ts(b,n)*spinints(m,n,e,j);
+							Wmbej(m,b,e,j) += -ts(b,n)*spinints(m,n,e,j);
 							fLoop{
-								*Wmbej.set(m,b,e,j) += -(0.5*td(f,b,j,n) + ts(f,j)*ts(b,n))*spinints(m,n,e,f);
+								Wmbej(m,b,e,j) += -(0.5*td(f,b,j,n) + ts(f,j)*ts(b,n))*spinints(m,n,e,f);
 							}
 						}
 					}
@@ -436,10 +437,10 @@ struct Timer
 //-----------------------------------------------------------------------------
 	void sendVec2D(Vector2D &vec2D, int &rank_src, int &rank_dst){  
 		if (mpi.rank==rank_src){
-				vec2D.send(rank_dst);
+				ccsd::mpi::send(vec2D, rank_dst);
 		}
 		if (mpi.rank==rank_dst){
-				vec2D.recv(rank_src);
+				ccsd::mpi::recv(vec2D, rank_src);
 		}
 	}
 //-----------------------------------------------------------------------------
@@ -448,10 +449,10 @@ struct Timer
 //-----------------------------------------------------------------------------
 	void sendVec4D(Vector4D &vec4D, int &rank_src, int &rank_dst){  
 		if (mpi.rank==rank_src){
-				vec4D.send(rank_dst);
+				ccsd::mpi::send(vec4D, rank_dst);
 		}
 		if (mpi.rank==rank_dst){
-				vec4D.recv(rank_src);
+				ccsd::mpi::recv(vec4D, rank_src);
 		}
 	}
 //-----------------------------------------------------------------------------
@@ -473,28 +474,28 @@ struct Timer
 		if (mpi.rank==rank_master){
 		aLoop{
 			iLoop{
-				*tsnew.set(a,i) = fs(i,a);
+				tsnew(a,i) = fs(i,a);
 				eLoop{
-					*tsnew.set(a,i) += ts(e,i)*Fae(a,e);
+					tsnew(a,i) += ts(e,i)*Fae(a,e);
 				}
 				mLoop{
-					*tsnew.set(a,i) += -ts(a,m)* Fmi(m,i);
+					tsnew(a,i) += -ts(a,m)* Fmi(m,i);
 					eLoop{
-						*tsnew.set(a,i) += td(a,e,i,m)* Fme(m,e);
+						tsnew(a,i) += td(a,e,i,m)* Fme(m,e);
 						fLoop{
-							*tsnew.set(a,i) += -0.5*td(e,f,i,m)*spinints(m,a,e,f);
+							tsnew(a,i) += -0.5*td(e,f,i,m)*spinints(m,a,e,f);
 						}
 						nLoop{
-							*tsnew.set(a,i) += -0.5*td(a,e,m,n)*spinints(n,m,e,i);
+							tsnew(a,i) += -0.5*td(a,e,m,n)*spinints(n,m,e,i);
 						}
 					}
 				}
 				nLoop{
 					fLoop{ 
-						*tsnew.set(a,i) += -ts(f,n)*spinints(n,a,i,f);
+						tsnew(a,i) += -ts(f,n)*spinints(n,a,i,f);
 					}
 				}
-				*tsnew.set(a,i) = tsnew(a,i)/Dai(a,i);
+				tsnew(a,i) = tsnew(a,i)/Dai(a,i);
 			}
 		}
 		}
@@ -524,42 +525,42 @@ struct Timer
 				bLoop{
 					iLoop{
 						jLoop{
-							*tdnew.set(a,b,i,j) += spinints(i,j,a,b);
+							tdnew(a,b,i,j) += spinints(i,j,a,b);
 							eLoop{
-								*tdnew.set(a,b,i,j) += td(a,e,i,j)*Fae(b,e)
+								tdnew(a,b,i,j) += td(a,e,i,j)*Fae(b,e)
 													-td(b,e,i,j)*Fae(a,e);
 								mLoop{
-									*tdnew.set(a,b,i,j) += -0.5*td(a,e,i,j)*ts(b,m)* Fme(m,e) 
+									tdnew(a,b,i,j) += -0.5*td(a,e,i,j)*ts(b,m)* Fme(m,e) 
 														+ 0.5*td(b,e,i,j)*ts(a,m)* Fme(m,e);
 								}
 							}
 							mLoop{
-								*tdnew.set(a,b,i,j) += -td(a,b,i,m)* Fmi(m,j)
+								tdnew(a,b,i,j) += -td(a,b,i,m)* Fmi(m,j)
 													+ td(a,b,j,m)* Fmi(m,i);
 								eLoop{
-									*tdnew.set(a,b,i,j) += -0.5*td(a,b,i,m)*ts(e,j)* Fme(m,e) 
+									tdnew(a,b,i,j) += -0.5*td(a,b,i,m)*ts(e,j)* Fme(m,e) 
 														+ 0.5*td(a,b,j,m)*ts(e,i)* Fme(m,e);
 								}
 							}
 							eLoop{
-								*tdnew.set(a,b,i,j) += ts(e,i)*spinints(a,b,e,j) - ts(e,j)*spinints(a,b,e,i);
+								tdnew(a,b,i,j) += ts(e,i)*spinints(a,b,e,j) - ts(e,j)*spinints(a,b,e,i);
 								fLoop{
-									*tdnew.set(a,b,i,j) += 0.5*get_tau(e,f,i,j)*Wabef(a,b,e,f);
+									tdnew(a,b,i,j) += 0.5*get_tau(e,f,i,j)*Wabef(a,b,e,f);
 								}
 							}
 							mLoop{
-								*tdnew.set(a,b,i,j) += -ts(a,m)*spinints(m,b,i,j) + ts(b,m)*spinints(m,a,i,j);
+								tdnew(a,b,i,j) += -ts(a,m)*spinints(m,b,i,j) + ts(b,m)*spinints(m,a,i,j);
 								eLoop{
-									*tdnew.set(a,b,i,j) +=  td(a,e,i,m)*Wmbej(m,b,e,j) - ts(e,i)*ts(a,m)*spinints(m,b,e,j);
-									*tdnew.set(a,b,i,j) += -td(a,e,j,m)*Wmbej(m,b,e,i) + ts(e,j)*ts(a,m)*spinints(m,b,e,i);
-									*tdnew.set(a,b,i,j) += -td(b,e,i,m)*Wmbej(m,a,e,j) + ts(e,i)*ts(b,m)*spinints(m,a,e,j);
-									*tdnew.set(a,b,i,j) +=  td(b,e,j,m)*Wmbej(m,a,e,i) - ts(e,j)*ts(b,m)*spinints(m,a,e,i);
+									tdnew(a,b,i,j) +=  td(a,e,i,m)*Wmbej(m,b,e,j) - ts(e,i)*ts(a,m)*spinints(m,b,e,j);
+									tdnew(a,b,i,j) += -td(a,e,j,m)*Wmbej(m,b,e,i) + ts(e,j)*ts(a,m)*spinints(m,b,e,i);
+									tdnew(a,b,i,j) += -td(b,e,i,m)*Wmbej(m,a,e,j) + ts(e,i)*ts(b,m)*spinints(m,a,e,j);
+									tdnew(a,b,i,j) +=  td(b,e,j,m)*Wmbej(m,a,e,i) - ts(e,j)*ts(b,m)*spinints(m,a,e,i);
 								}
 								nLoop{
-									*tdnew.set(a,b,i,j) += 0.5*get_tau(a,b,m,n)*Wmnij(m,n,i,j);
+									tdnew(a,b,i,j) += 0.5*get_tau(a,b,m,n)*Wmnij(m,n,i,j);
 								}
 							}
-							*tdnew.set(a,b,i,j) /= Dabij(a,b,i,j);
+							tdnew(a,b,i,j) /= Dabij(a,b,i,j);
 						}
 					}
 				}
@@ -619,8 +620,8 @@ int main(int argc, char** argv) {
 		makeT1_s();
 		makeT2_d();
 		
-		tdnew.mpi_bcast(rank_master);
-		tsnew.mpi_bcast(rank_master);
+		ccsd::mpi::bcast(tdnew, rank_master);
+		ccsd::mpi::bcast(tsnew, rank_master);
 		
 		td=tdnew;
 		ts=tsnew;

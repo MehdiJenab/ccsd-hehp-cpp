@@ -255,10 +255,11 @@ if(BUILD_TESTING)
     FetchContent_MakeAvailable(Catch2)
     list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 
-    # Smoke test: prove Catch2 is wired up. Replaced/extended in later tickets.
-    add_executable(test_smoke tests/test_smoke.cpp)
-    target_link_libraries(test_smoke PRIVATE Catch2::Catch2WithMain)
-    ccsd_apply_flags(test_smoke)
+    # Tensor unit tests
+    add_executable(test_tensors tests/test_tensors.cpp)
+    target_link_libraries(test_tensors PRIVATE Catch2::Catch2WithMain)
+    target_include_directories(test_tensors PRIVATE ${CMAKE_SOURCE_DIR})
+    ccsd_apply_flags(test_tensors)
     include(Catch)
-    catch_discover_tests(test_smoke)
+    catch_discover_tests(test_tensors)
 endif()
