@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, pass-1]
+  pull_request:
+    branches: [main]
+
+jobs:
+  debug:
+    name: Debug build + unit tests + regression
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13 libopenmpi-dev openmpi-bin \
+                                  libjansson-dev ninja-build cmake python3
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+      - name: Configure
+        run: cmake --preset debug
+      - name: Build
+        run: cmake --build --preset debug
+      - name: Unit tests
+        run: ctest --preset debug
+      - name: Bit-exact regression
+        run: python3 tests/run_mpi_regression.py --executable build/debug/ccsd_code
+
+  asan:
+    name: ASan + UBSan + regression
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13 libopenmpi-dev openmpi-bin \
+                                  libjansson-dev ninja-build cmake python3
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+      - name: Configure
+        run: cmake --preset asan
+      - name: Build
+        run: cmake --build --preset asan
+      - name: Unit tests
+        run: ctest --preset asan
+      - name: Bit-exact regression (np=2 only under sanitizers)
+        run: python3 tests/run_mpi_regression.py --executable build/asan/ccsd_code --np 2
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13 libopenmpi-dev openmpi-bin \
+                                  libjansson-dev ninja-build cmake python3 gcovr
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+      - name: Configure
+        run: cmake --preset coverage
+      - name: Build
+        run: cmake --build --preset coverage
+      - name: Unit tests
+        run: ctest --preset coverage
+      - name: Regression run for coverage
+        run: python3 tests/run_mpi_regression.py --executable build/coverage/ccsd_code --np 4
+      - name: Coverage report (warn-only until T11)
+        run: |
+          gcovr --root . --filter 'src/' --filter 'include/' --txt \
+                --print-summary --object-directory build/coverage || true
