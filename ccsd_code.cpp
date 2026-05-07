@@ -16,18 +16,10 @@
 // #define timing //for timing different functions
 
 
-#define mLoop for(int m=0;m<p.Nelec;++m)
-#define nLoop for(int n=0;n<p.Nelec;++n)
 
 
-#define iLoop for(int i=0;i<p.Nelec;++i)
-#define jLoop for(int j=0;j<p.Nelec;++j)
 
-#define eLoop for(int e=p.Nelec;e<dim2;++e)
-#define fLoop for(int f=p.Nelec;f<dim2;++f)
 
-#define aLoop for(int a=p.Nelec;a<dim2;++a)
-#define bLoop for(int b=p.Nelec;b<dim2;++b)
 
 
 using namespace std;
@@ -69,10 +61,10 @@ struct Timer
 
 //=============================================================================
 	void guess_T2(){
-		aLoop{
-			bLoop{
-				iLoop{
-					jLoop{
+		for (int a = p.Nelec; a < dim2; ++a){
+			for (int b = p.Nelec; b < dim2; ++b){
+				for (int i = 0; i < p.Nelec; ++i){
+					for (int j = 0; j < p.Nelec; ++j){
 						td(a,b,i,j) += spinints(i,j,a,b)/(fs(i,i) + fs(j,j) - fs(a,a) - fs(b,b));
 					}
 				}
@@ -85,16 +77,16 @@ struct Timer
 	void get_denominator_arrays(){ // Make denominator arrays Dai, Dabij, Equation (12) of Stanton
 		
 		Dai.zeros();
-		aLoop {
-			iLoop{
+		for (int a = p.Nelec; a < dim2; ++a) {
+			for (int i = 0; i < p.Nelec; ++i){
 				Dai(a,i) = fs(i,i) - fs(a,a);
 			}
 		}
 		Dabij.zeros();
-		aLoop {
-			bLoop{
-				iLoop{
-					jLoop{
+		for (int a = p.Nelec; a < dim2; ++a) {
+			for (int b = p.Nelec; b < dim2; ++b){
+				for (int i = 0; i < p.Nelec; ++i){
+					for (int j = 0; j < p.Nelec; ++j){
 						Dabij(a,b,i,j) = fs(i,i) + fs(j,j) - fs(a,a) - fs(b,b);
 					}
 				}
@@ -281,14 +273,14 @@ struct Timer
 //=============================================================================
 	void get_Fae(){ // Stanton eq (3)
 		Fae.zeros();
-		aLoop {
-			eLoop{
+		for (int a = p.Nelec; a < dim2; ++a) {
+			for (int e = p.Nelec; e < dim2; ++e){
 				Fae(a,e) = (1 - (a == e))*fs(a,e);
-				mLoop{
+				for (int m = 0; m < p.Nelec; ++m){
 					Fae(a,e) += -0.5*fs(m,e)*ts(a,m);
-					fLoop{
+					for (int f = p.Nelec; f < dim2; ++f){
 						Fae(a,e) += ts(f,m)*spinints(m,a,f,e);
-						nLoop{
+						for (int n = 0; n < p.Nelec; ++n){
 							Fae(a,e) += -0.5*get_taus(a,f,m,n)*spinints(m,n,e,f);
 						}
 					}
@@ -302,14 +294,14 @@ struct Timer
 //-----------------------------------------------------------------------------
 	void get_Fmi(){ // Stanton eq (4)
 		Fmi.zeros();
-		mLoop {
-			iLoop {
+		for (int m = 0; m < p.Nelec; ++m) {
+			for (int i = 0; i < p.Nelec; ++i) {
 				Fmi(m,i) = (1 - (m == i))*fs(m,i);
-				eLoop{
+				for (int e = p.Nelec; e < dim2; ++e){
 					Fmi(m,i) += 0.5*ts(e,i)*fs(m,e);
-					nLoop{
+					for (int n = 0; n < p.Nelec; ++n){
 						Fmi(m,i) += ts(e,n)*spinints(m,n,i,e);
-						fLoop{
+						for (int f = p.Nelec; f < dim2; ++f){
 							Fmi(m,i) += 0.5*get_taus(e,f,i,n)*spinints(m,n,e,f);
 						}
 					}
@@ -323,11 +315,11 @@ struct Timer
 //-----------------------------------------------------------------------------
 	void get_Fme(){  // Stanton eq (5)
 		Fme.zeros();
-		mLoop{
-			eLoop{
+		for (int m = 0; m < p.Nelec; ++m){
+			for (int e = p.Nelec; e < dim2; ++e){
 				Fme(m,e) = fs(m,e);
-				nLoop{
-					fLoop{
+				for (int n = 0; n < p.Nelec; ++n){
+					for (int f = p.Nelec; f < dim2; ++f){
 						Fme(m,e) += ts(f,n)*spinints(m,n,e,f);
 					}
 				}
@@ -340,15 +332,15 @@ struct Timer
 //-----------------------------------------------------------------------------
 	void get_Wmnij(){// Stanton eq (6)
 		Wmnij.zeros();
-		mLoop{
-			nLoop{
-				iLoop{
-					jLoop{
+		for (int m = 0; m < p.Nelec; ++m){
+			for (int n = 0; n < p.Nelec; ++n){
+				for (int i = 0; i < p.Nelec; ++i){
+					for (int j = 0; j < p.Nelec; ++j){
 						Wmnij(m,n,i,j) = spinints(m,n,i,j);
-						eLoop{
+						for (int e = p.Nelec; e < dim2; ++e){
 							Wmnij(m,n,i,j) +=  ts(e,j)*spinints(m,n,i,e) 
 												-ts(e,i)*spinints(m,n,j,e);
-							fLoop{
+							for (int f = p.Nelec; f < dim2; ++f){
 								Wmnij(m,n,i,j) += 0.25*get_tau(e,f,i,j)*spinints(m,n,e,f);
 							}
 						}
@@ -362,15 +354,15 @@ struct Timer
 //-----------------------------------------------------------------------------
 	void get_Wabef(){ // Stanton eq (7)
 		Wabef.zeros();
-		aLoop{
-			bLoop{
-				eLoop{
-					fLoop{
+		for (int a = p.Nelec; a < dim2; ++a){
+			for (int b = p.Nelec; b < dim2; ++b){
+				for (int e = p.Nelec; e < dim2; ++e){
+					for (int f = p.Nelec; f < dim2; ++f){
 						Wabef(a,b,e,f) = spinints(a,b,e,f);
-						mLoop{
+						for (int m = 0; m < p.Nelec; ++m){
 							Wabef(a,b,e,f) += -ts(b,m)*spinints(a,m,e,f) 
 												+ts(a,m)*spinints(b,m,e,f);
-							nLoop{
+							for (int n = 0; n < p.Nelec; ++n){
 								Wabef(a,b,e,f) += 0.25*get_tau(a,b,m,n)*spinints(m,n,e,f);
 							}
 						}
@@ -385,17 +377,17 @@ struct Timer
 //-----------------------------------------------------------------------------
 	void get_Wmbej(){ // Stanton eq (8)
 		Wmbej.zeros();
-		mLoop{
-			bLoop{
-				eLoop{
-					jLoop{
+		for (int m = 0; m < p.Nelec; ++m){
+			for (int b = p.Nelec; b < dim2; ++b){
+				for (int e = p.Nelec; e < dim2; ++e){
+					for (int j = 0; j < p.Nelec; ++j){
 						Wmbej(m,b,e,j) = spinints(m,b,e,j);
-						fLoop{
+						for (int f = p.Nelec; f < dim2; ++f){
 							Wmbej(m,b,e,j) += ts(f,j)*spinints(m,b,e,f);
 						}
-						nLoop{
+						for (int n = 0; n < p.Nelec; ++n){
 							Wmbej(m,b,e,j) += -ts(b,n)*spinints(m,n,e,j);
-							fLoop{
+							for (int f = p.Nelec; f < dim2; ++f){
 								Wmbej(m,b,e,j) += -(0.5*td(f,b,j,n) + ts(f,j)*ts(b,n))*spinints(m,n,e,f);
 							}
 						}
@@ -472,26 +464,26 @@ struct Timer
 		}
 
 		if (mpi.rank==rank_master){
-		aLoop{
-			iLoop{
+		for (int a = p.Nelec; a < dim2; ++a){
+			for (int i = 0; i < p.Nelec; ++i){
 				tsnew(a,i) = fs(i,a);
-				eLoop{
+				for (int e = p.Nelec; e < dim2; ++e){
 					tsnew(a,i) += ts(e,i)*Fae(a,e);
 				}
-				mLoop{
+				for (int m = 0; m < p.Nelec; ++m){
 					tsnew(a,i) += -ts(a,m)* Fmi(m,i);
-					eLoop{
+					for (int e = p.Nelec; e < dim2; ++e){
 						tsnew(a,i) += td(a,e,i,m)* Fme(m,e);
-						fLoop{
+						for (int f = p.Nelec; f < dim2; ++f){
 							tsnew(a,i) += -0.5*td(e,f,i,m)*spinints(m,a,e,f);
 						}
-						nLoop{
+						for (int n = 0; n < p.Nelec; ++n){
 							tsnew(a,i) += -0.5*td(a,e,m,n)*spinints(n,m,e,i);
 						}
 					}
 				}
-				nLoop{
-					fLoop{ 
+				for (int n = 0; n < p.Nelec; ++n){
+					for (int f = p.Nelec; f < dim2; ++f){ 
 						tsnew(a,i) += -ts(f,n)*spinints(n,a,i,f);
 					}
 				}
@@ -521,42 +513,42 @@ struct Timer
 		
 		
 		if (mpi.rank==rank_master){
-			aLoop{
-				bLoop{
-					iLoop{
-						jLoop{
+			for (int a = p.Nelec; a < dim2; ++a){
+				for (int b = p.Nelec; b < dim2; ++b){
+					for (int i = 0; i < p.Nelec; ++i){
+						for (int j = 0; j < p.Nelec; ++j){
 							tdnew(a,b,i,j) += spinints(i,j,a,b);
-							eLoop{
+							for (int e = p.Nelec; e < dim2; ++e){
 								tdnew(a,b,i,j) += td(a,e,i,j)*Fae(b,e)
 													-td(b,e,i,j)*Fae(a,e);
-								mLoop{
+								for (int m = 0; m < p.Nelec; ++m){
 									tdnew(a,b,i,j) += -0.5*td(a,e,i,j)*ts(b,m)* Fme(m,e) 
 														+ 0.5*td(b,e,i,j)*ts(a,m)* Fme(m,e);
 								}
 							}
-							mLoop{
+							for (int m = 0; m < p.Nelec; ++m){
 								tdnew(a,b,i,j) += -td(a,b,i,m)* Fmi(m,j)
 													+ td(a,b,j,m)* Fmi(m,i);
-								eLoop{
+								for (int e = p.Nelec; e < dim2; ++e){
 									tdnew(a,b,i,j) += -0.5*td(a,b,i,m)*ts(e,j)* Fme(m,e) 
 														+ 0.5*td(a,b,j,m)*ts(e,i)* Fme(m,e);
 								}
 							}
-							eLoop{
+							for (int e = p.Nelec; e < dim2; ++e){
 								tdnew(a,b,i,j) += ts(e,i)*spinints(a,b,e,j) - ts(e,j)*spinints(a,b,e,i);
-								fLoop{
+								for (int f = p.Nelec; f < dim2; ++f){
 									tdnew(a,b,i,j) += 0.5*get_tau(e,f,i,j)*Wabef(a,b,e,f);
 								}
 							}
-							mLoop{
+							for (int m = 0; m < p.Nelec; ++m){
 								tdnew(a,b,i,j) += -ts(a,m)*spinints(m,b,i,j) + ts(b,m)*spinints(m,a,i,j);
-								eLoop{
+								for (int e = p.Nelec; e < dim2; ++e){
 									tdnew(a,b,i,j) +=  td(a,e,i,m)*Wmbej(m,b,e,j) - ts(e,i)*ts(a,m)*spinints(m,b,e,j);
 									tdnew(a,b,i,j) += -td(a,e,j,m)*Wmbej(m,b,e,i) + ts(e,j)*ts(a,m)*spinints(m,b,e,i);
 									tdnew(a,b,i,j) += -td(b,e,i,m)*Wmbej(m,a,e,j) + ts(e,i)*ts(b,m)*spinints(m,a,e,j);
 									tdnew(a,b,i,j) +=  td(b,e,j,m)*Wmbej(m,a,e,i) - ts(e,j)*ts(b,m)*spinints(m,a,e,i);
 								}
-								nLoop{
+								for (int n = 0; n < p.Nelec; ++n){
 									tdnew(a,b,i,j) += 0.5*get_tau(a,b,m,n)*Wmnij(m,n,i,j);
 								}
 							}
@@ -575,10 +567,10 @@ struct Timer
 		// DOI: 10.1002/9780470125915.ch2
 		// computes CCSD energy given T1 and T2
 		double ECCSD = 0.0;
-		iLoop{		
-			aLoop{
-				jLoop{
-					bLoop{
+		for (int i = 0; i < p.Nelec; ++i){		
+			for (int a = p.Nelec; a < dim2; ++a){
+				for (int j = 0; j < p.Nelec; ++j){
+					for (int b = p.Nelec; b < dim2; ++b){
 						ECCSD += 0.25*spinints(i,j,a,b)*td(a,b,i,j) + 0.5*spinints(i,j,a,b)* ts(a,i) * ts(b,j);
 					}
 				}
