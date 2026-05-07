@@ -24,16 +24,6 @@
 
 using namespace std;
 
-ParameterClass  p;  // INITIALIZE ORBITAL ENERGIES //  AND TRANSFORMED TWO ELECTRON INTEGRALS  
-MpiClass  mpi;
-
-int rank_master, rank_start;
-
-Vector2D Fae, Fmi, Fme, Dai, tsnew, ts, fs;
-Vector4D Wmnij,Wabef,Wmbej,Dabij,tdnew,td,spinints;
-
-int dim2; 
-
 
 struct Timer
 {
@@ -55,9 +45,19 @@ struct Timer
 		float ms = duration.count() *  1000.0f;
 		std::cout<< " timer:"<< ms <<" ms "<< "for "<< name<<"in rank="<<rank<<std::endl;
 	}
-	
+
 };
 
+
+class CcsdSolver {
+public:
+	ParameterClass p;  // ORBITAL ENERGIES AND TRANSFORMED TWO ELECTRON INTEGRALS
+	MpiClass mpi;
+	int rank_master = 0;
+	int rank_start = 0;
+	Vector2D Fae, Fmi, Fme, Dai, tsnew, ts, fs;
+	Vector4D Wmnij, Wabef, Wmbej, Dabij, tdnew, td, spinints;
+	int dim2 = 0;
 
 //=============================================================================
 	void guess_T2(){
@@ -583,57 +583,64 @@ struct Timer
 
 
 
-//============================================================================= 
-int main(int argc, char** argv) {
-	ccsd::MpiSession session(&argc, &argv);
-	mpi.size = session.size();
-	mpi.rank = session.rank();
-
-	//================
-	// MAIN LOOP
-	// CCSD iteration
-	//================
- 	std::cout.precision(10);
+//=============================================================================
+	void run() {
+		//================
+		// MAIN LOOP
+		// CCSD iteration
+		//================
+ 		std::cout.precision(10);
 
 
-	double cc_en = 0, cc_en_diff = 10.0;
-	double cc_en_pre = 0;
+		double cc_en = 0, cc_en_diff = 10.0;
+		double cc_en_pre = 0;
 
 
-	initialization();
-	if (mpi.rank==rank_master){
-		cout << "CCSD in MpiC++"<<endl;
-	}
+		initialization();
+		if (mpi.rank==rank_master){
+			cout << "CCSD in MpiC++"<<endl;
+		}
 
 
-	while (cc_en_diff>10E-9) { // arbitrary convergence criteria
-		cc_en_pre = cc_en;
- 		update_intermediates();
-		makeT1_s();
-		makeT2_d();
-		
-		ccsd::mpi::bcast(tdnew, rank_master);
-		ccsd::mpi::bcast(tsnew, rank_master);
-		
-		td=tdnew;
-		ts=tsnew;
+		while (cc_en_diff>10E-9) { // arbitrary convergence criteria
+			cc_en_pre = cc_en;
+ 			update_intermediates();
+			makeT1_s();
+			makeT2_d();
+
+			ccsd::mpi::bcast(tdnew, rank_master);
+			ccsd::mpi::bcast(tsnew, rank_master);
+
+			td=tdnew;
+			ts=tsnew;
+
+			if (mpi.rank==rank_master){
+				cc_en = ccsdenergy();
+				cc_en_diff = abs(cc_en - cc_en_pre);
+			}
+
+			//broadcast
+			MPI_Bcast( &cc_en_diff, 1,  MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		}
+
 
 		if (mpi.rank==rank_master){
-			cc_en = ccsdenergy();
-			cc_en_diff = abs(cc_en - cc_en_pre);
+			cout<<"  E(corr,CCSD) = "<< cc_en<<endl;
+			cout<<"  E(CCSD) = "<< cc_en + p.ENUC + p.EN<<endl;
 		}
-		
-		//broadcast
-		MPI_Bcast( &cc_en_diff, 1,  MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	}
+//=============================================================================
+};  // class CcsdSolver
 
 
-	if (mpi.rank==rank_master){
-		cout<<"  E(corr,CCSD) = "<< cc_en<<endl;
-		cout<<"  E(CCSD) = "<< cc_en + p.ENUC + p.EN<<endl;
-	}
-
-
-    return 0;
+//=============================================================================
+int main(int argc, char** argv) {
+	ccsd::MpiSession session(&argc, &argv);
+	CcsdSolver solver;
+	solver.mpi.size = session.size();
+	solver.mpi.rank = session.rank();
+	solver.run();
+	return 0;
 }
-//============================================================================= 
+//=============================================================================
+
