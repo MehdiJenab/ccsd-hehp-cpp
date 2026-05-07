@@ -5,7 +5,6 @@
 /CMakeFiles
 CMakeCache.txt
 cmake_install.cmake
-Makefile
 
 # Compiled objects
 *.o
@@ -49,3 +48,15 @@ docs/rtf/
 
 # auxiliary files
 aux*.*
+
+# Modern build outputs
+build/
+build-*/
+.cache/
+compile_commands.json
+
+# Coverage
+*.gcov
+*.gcda
+*.gcno
+coverage/

@@ -10,6 +10,35 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(USE_JSON "Enable JSON support with jansson library" ON)
 option(BUILD_TESTING "Build tests" ON)
 
+# ── Pass-1 modernization additions ────────────────────────────────────────────
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(ProjectWarnings)
+
+option(CCSD_ENABLE_ASAN     "AddressSanitizer"  OFF)
+option(CCSD_ENABLE_UBSAN    "UBSanitizer"       OFF)
+option(CCSD_ENABLE_TSAN     "ThreadSanitizer"   OFF)
+option(CCSD_ENABLE_COVERAGE "Code coverage"     OFF)
+
+function(ccsd_apply_flags TARGET)
+    project_apply_warnings(${TARGET})
+    if(CCSD_ENABLE_ASAN)
+        target_compile_options(${TARGET} PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+        target_link_options   (${TARGET} PUBLIC -fsanitize=address)
+    endif()
+    if(CCSD_ENABLE_UBSAN)
+        target_compile_options(${TARGET} PUBLIC -fsanitize=undefined)
+        target_link_options   (${TARGET} PUBLIC -fsanitize=undefined)
+    endif()
+    if(CCSD_ENABLE_TSAN)
+        target_compile_options(${TARGET} PUBLIC -fsanitize=thread)
+        target_link_options   (${TARGET} PUBLIC -fsanitize=thread)
+    endif()
+    if(CCSD_ENABLE_COVERAGE)
+        target_compile_options(${TARGET} PUBLIC --coverage -O0 -g)
+        target_link_options   (${TARGET} PUBLIC --coverage)
+    endif()
+endfunction()
+
 # Find MPI
 find_package(MPI REQUIRED)
 
@@ -41,6 +70,7 @@ set(HEADERS
 
 # Create executable
 add_executable(ccsd_code ${SOURCES})
+ccsd_apply_flags(ccsd_code)
 
 # Link MPI
 target_link_libraries(ccsd_code PRIVATE MPI::MPI_CXX)
@@ -138,6 +168,7 @@ if(BUILD_TESTING)
         add_test(
             NAME ccsd_python_regression
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_mpi_regression.py
+                    --executable $<TARGET_FILE:ccsd_code>
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         )
         
@@ -213,4 +244,22 @@ if(BUILD_DOCUMENTATION)
     else()
         message(WARNING "Doxygen not found - documentation cannot be built")
     endif()
+endif()
+# ── Catch2 unit tests (real tests added in later tickets) ─────────────────────
+if(BUILD_TESTING)
+    include(FetchContent)
+    FetchContent_Declare(
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG        v3.5.4
+    )
+    FetchContent_MakeAvailable(Catch2)
+    list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+
+    # Smoke test: prove Catch2 is wired up. Replaced/extended in later tickets.
+    add_executable(test_smoke tests/test_smoke.cpp)
+    target_link_libraries(test_smoke PRIVATE Catch2::Catch2WithMain)
+    ccsd_apply_flags(test_smoke)
+    include(Catch)
+    catch_discover_tests(test_smoke)
 endif()
