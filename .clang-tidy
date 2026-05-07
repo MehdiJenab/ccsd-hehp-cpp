@@ -12,6 +12,6 @@ Checks: >
     -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
     -cppcoreguidelines-pro-type-vararg
 
-WarningsAsErrors: ''
+WarningsAsErrors: '*'
 HeaderFilterRegex: '^.*include/ccsd/.*\.hpp$'
 FormatStyle: file

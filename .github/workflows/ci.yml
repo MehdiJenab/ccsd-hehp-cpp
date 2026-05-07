@@ -47,6 +47,28 @@ jobs:
       - name: Bit-exact regression (np=2 only under sanitizers)
         run: python3 tests/run_mpi_regression.py --executable build/asan/ccsd_code --np 2
 
+  tidy:
+    name: clang-tidy
+    runs-on: ubuntu-22.04
+    needs: debug
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13 libopenmpi-dev openmpi-bin \
+                                  ninja-build cmake clang-tidy-14 python3
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+          sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-14 100
+      - name: Configure
+        run: cmake --preset debug
+      - name: Build (for compile_commands.json)
+        run: cmake --build --preset debug
+      - name: Run clang-tidy
+        run: |
+          clang-tidy -p build/debug --warnings-as-errors='*' \
+            $(git ls-files 'apps/*.cpp' 'include/ccsd/*.hpp')
+
   coverage:
     name: Coverage
     runs-on: ubuntu-22.04

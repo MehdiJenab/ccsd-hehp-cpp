@@ -128,13 +128,13 @@ public:
 		//This makes the spin basis double bar integral (physicists' notation)
 		spinints.zeros();
 		double value1,value2;
-		for (size_t p = 1; p < dim2+1; ++p) {
-			for (size_t q = 1; q < dim2+1; ++q) {
-				for (size_t r = 1; r < dim2+1; ++r) {
-					for (size_t s = 1; s < dim2+1; ++s) {
-						value1 = get_value( (p+1)>>1,(r+1)>>1,(q+1)>>1,(s+1)>>1 ) * (p%2 == r%2) * (q%2 == s%2);
-						value2 = get_value( (p+1)>>1,(s+1)>>1,(q+1)>>1,(r+1)>>1 ) * (p%2 == s%2) * (q%2 == r%2);
-						spinints(p-1,q-1,r-1,s-1) = value1 - value2;
+		for (int pp = 1; pp < dim2 + 1; ++pp) {
+			for (int qq = 1; qq < dim2 + 1; ++qq) {
+				for (int rr = 1; rr < dim2 + 1; ++rr) {
+					for (int ss = 1; ss < dim2 + 1; ++ss) {
+						value1 = get_value( static_cast<double>((pp+1)>>1), static_cast<double>((rr+1)>>1), static_cast<double>((qq+1)>>1), static_cast<double>((ss+1)>>1) ) * (pp%2 == rr%2) * (qq%2 == ss%2);
+						value2 = get_value( static_cast<double>((pp+1)>>1), static_cast<double>((ss+1)>>1), static_cast<double>((qq+1)>>1), static_cast<double>((rr+1)>>1) ) * (pp%2 == ss%2) * (qq%2 == rr%2);
+						spinints(pp-1, qq-1, rr-1, ss-1) = value1 - value2;
 					}
 				}
 			}
@@ -146,11 +146,11 @@ public:
 //=============================================================================
 	void get_fs(){//Spin basis fock matrix eigenvalues, put MO energies in diagonal array
 		vector<double> fs_1D;
-		fs_1D.resize(dim2);
+		fs_1D.resize(static_cast<std::size_t>(dim2));
 		fill(fs_1D.begin(), fs_1D.end(), 0.0);
 
-		for (size_t i = 0; i < fs_1D.size(); ++i){
-			fs_1D[i] = p.orbital_energy[floor(i/2)];
+		for (std::size_t i = 0; i < fs_1D.size(); ++i){
+			fs_1D[i] = p.orbital_energy[i / 2];
 		}
 
 		fs.diagonalize(fs_1D);
