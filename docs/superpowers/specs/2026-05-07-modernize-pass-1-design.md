@@ -126,9 +126,9 @@ ccsd-hehp-cpp/
 └── README.md
 ```
 
-**Deleted by end of pass 1:** `ParameterClass_NoJson.h`, the legacy `Makefile`
-build path, the macro defines `iLoop`/`jLoop`/`mLoop`/`nLoop`/`eLoop`/`fLoop`/
-`aLoop`/`bLoop` in `ccsd_code.cpp`.
+**Deleted by end of pass 1:** `ParameterClass_NoJson.h`, the macro defines
+`iLoop`/`jLoop`/`mLoop`/`nLoop`/`eLoop`/`fLoop`/`aLoop`/`bLoop` in
+`ccsd_code.cpp`. (No legacy `Makefile` exists in this checkout to delete.)
 
 **Stable across pass 1:** the `config.json` schema (keys may be re-keyed by
 name but no field is added/removed), the `tests/run_mpi_regression.py`
@@ -155,10 +155,12 @@ regression must be green for `np ∈ {2, 4, 8}`.
 - Add `.clang-format`, `.clang-tidy` (latter not yet enforced).
 - Add `Makefile` wrapper: `build`, `test`, `asan`, `coverage`, `format`,
   `tidy`, `check`.
-- Existing `CMakeLists.txt` and old `make` keep working.
+- The existing `CMakeLists.txt` keeps working unchanged. (There is **no
+  legacy Makefile** in this checkout despite the README; ignore the README's
+  Makefile references.)
 - Acceptance: `cmake --preset debug && cmake --build --preset debug && ctest
-  --preset debug` green; bit-exact regression green; the legacy `make` still
-  works.
+  --preset debug` green; bit-exact regression green; the legacy
+  `cmake -S . -B build && cmake --build build` flow still works.
 
 **T03. GitHub Actions CI.**
 - `.github/workflows/ci.yml`: jobs for debug+ctest+regression, asan+regression,
@@ -231,9 +233,8 @@ regression must be green for `np ∈ {2, 4, 8}`.
   `energy.cpp`, `driver.cpp` plus matching headers.
 - Move tensors / parameters / mpi_session into the new tree.
 - Thin `apps/ccsd_code.cpp` calls into the library.
-- Update `CMakeLists.txt` files; delete the legacy `Makefile` build path
-  and the legacy top-level `CMakeLists.txt` content (replace, don't
-  duplicate).
+- Replace the top-level `CMakeLists.txt` with the new presets-driven
+  version (don't keep two CMake files in parallel).
 - Acceptance: bit-exact green for `np ∈ {2,4,8}`; gcovr reports ≥100% line
   coverage on `src/` and `include/ccsd/` from unit tests + regression run
   combined.
