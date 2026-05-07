@@ -61,10 +61,9 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 # Source files
 set(SOURCES ccsd_code.cpp)
-set(HEADERS 
-    ParameterClass.h 
-    ParameterClass_NoJson.h 
-    MpiClass.h 
+set(HEADERS
+    ParameterClass.h
+    MpiClass.h
     VectorsClass.h
 )
 

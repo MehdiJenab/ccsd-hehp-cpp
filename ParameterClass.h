@@ -2,11 +2,10 @@
 #define ParameterClass_Included
 
 #include <array>
-#include <map>
+#include <cstdlib>
 #include <iostream>
+#include <map>
 
-
-using namespace std;
 
 class ParameterClass{
 //=============================================================================
@@ -14,21 +13,21 @@ class ParameterClass{
 		int dim;
 		size_t flags = 0;
 		json_error_t error;
-// 		if (rank==0){cout << "-----------------------------------------------------"<<endl;}
+// 		if (rank==0){std::cout << "-----------------------------------------------------"<<std::endl;}
 		
 		//--- loading the JSON file ------------------------------------------
 		json_t* file_json = json_load_file("./config.json", flags, &error);
 		if(!file_json){
-			cerr << "in line " << error.line << ": " << error.text << endl;
-			exit(1);
+			std::cerr << "in line " << error.line << ": " << error.text << std::endl;
+			std::exit(1);
 		}
 		//--------------------------------------------------------------------
 		
 		//--- returning the config object ------------------------------------  
 		json_t* config_json = json_object_get(file_json, "config");
 		if(!config_json){
-			cerr << "in line " << error.line << ": " << error.text << endl;
-			exit(1);
+			std::cerr << "in line " << error.line << ": " << error.text << std::endl;
+			std::exit(1);
 		}
 		//--------------------------------------------------------------------
 		return config_json; 
@@ -38,9 +37,9 @@ class ParameterClass{
 //=============================================================================
 	int read_integer (int index, const char * name){
 		json_t* obj_json = json_array_get(config_json, index);
-		if (!obj_json) cout<<"can't catch"<<index<<" member of config="<<name <<endl;
+		if (!obj_json) std::cout<<"can't catch"<<index<<" member of config="<<name <<std::endl;
 		obj_json = json_object_get(obj_json, name);
-		if (!obj_json) cout<<"can't catch "<<name<< " object, name and index does not match" <<endl;
+		if (!obj_json) std::cout<<"can't catch "<<name<< " object, name and index does not match" <<std::endl;
 		return json_integer_value(obj_json);
 	}
 //=============================================================================
@@ -48,9 +47,9 @@ class ParameterClass{
 //=============================================================================
 	double read_double (int index, const char * name){
 		json_t* obj_json = json_array_get(config_json, index);
-		if (!obj_json) cout<<"can't catch"<<index<<" member of config="<<name <<endl;
+		if (!obj_json) std::cout<<"can't catch"<<index<<" member of config="<<name <<std::endl;
 		obj_json = json_object_get(obj_json, name);
-		if (!obj_json) cout<<"can't catch "<<name<< " object, name and index does not match" <<endl;
+		if (!obj_json) std::cout<<"can't catch "<<name<< " object, name and index does not match" <<std::endl;
 		return json_real_value(obj_json);		
 	}
 //=============================================================================
@@ -58,9 +57,9 @@ class ParameterClass{
 //=============================================================================
 	std::array<double,2> read_orbital_energy (){
 		json_t* obj_json = json_array_get(config_json, 2);
-		if (!obj_json) cout<<"can't catch 3 member of config" <<endl;
+		if (!obj_json) std::cout<<"can't catch 3 member of config" <<std::endl;
 		json_t* obj_json_arr = json_object_get(obj_json, "orbital_energy");
-		if (!obj_json) cout<<"can't catch orbital_energy object" <<endl;
+		if (!obj_json) std::cout<<"can't catch orbital_energy object" <<std::endl;
 		double zero = json_real_value(json_array_get(obj_json_arr, 0));
 		double first = json_real_value(json_array_get(obj_json_arr, 1));
 		std::array<double,2> arr={zero,first};
@@ -72,9 +71,9 @@ class ParameterClass{
 	std::map<double,double> read_ttmo(){
 		std::map<double,double> ttmo;
 		json_t* obj_json = json_array_get(config_json, 5);
-		if (!obj_json) cout<<"can't catch 5 member of config" <<endl;
+		if (!obj_json) std::cout<<"can't catch 5 member of config" <<std::endl;
 		const json_t * json_arr = json_object_get(obj_json, "ttmo");
-		if (!json_arr) cout<<"can't catch ttmo object" <<endl;
+		if (!json_arr) std::cout<<"can't catch ttmo object" <<std::endl;
 		size_t size = json_array_size(json_arr);
 		for (size_t i=0; i<size; i +=2){
 			double key   = json_real_value(json_array_get(json_arr, i  ));

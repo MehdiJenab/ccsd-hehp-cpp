@@ -1,5 +1,10 @@
 #ifndef VectorsClass_Included
-#define VectorsClas_Included
+#define VectorsClass_Included
+
+#include <algorithm>
+#include <cstddef>
+#include <iostream>
+#include <vector>
 
 
 
@@ -23,7 +28,7 @@ public:
 		n2=dim2;
 		n_size=n1*n2;
 		vec2D.resize(n_size);
-		fill(vec2D.begin(), vec2D.end(), 0.0);
+		std::fill(vec2D.begin(), vec2D.end(), 0.0);
 	}
 //-----------------------------------------------------------------------------
 
@@ -43,14 +48,14 @@ public:
 
 //-----------------------------------------------------------------------------
 	void zeros(){
-		fill(vec2D.begin(), vec2D.end(), 0.0);
+		std::fill(vec2D.begin(), vec2D.end(), 0.0);
 	}
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 	void diagonalize(std::vector<double> &fs_1D){
-		for (size_t i = 0; i < n1; ++i){
-			for (size_t j = 0; j < n2; ++j){
+		for (std::size_t i = 0; i < n1; ++i){
+			for (std::size_t j = 0; j < n2; ++j){
 				if (i==j){
 					*this->set(i,j)=fs_1D[i];
 				}else{
@@ -160,7 +165,7 @@ public:
 		n4=dim2;
 		n_size=n1*n2*n3*n4;
 		vec4D.resize(n_size);
-		fill(vec4D.begin(), vec4D.end(), 0.0);
+		std::fill(vec4D.begin(), vec4D.end(), 0.0);
 	}
 //-----------------------------------------------------------------------------
 
@@ -174,7 +179,7 @@ public:
     }
 //-----------------------------------------------------------------------------
 	void zeros(){
-		fill(vec4D.begin(), vec4D.end(), 0.0);
+		std::fill(vec4D.begin(), vec4D.end(), 0.0);
 	}
 //-----------------------------------------------------------------------------
 	void mpi_bcast(int &rank_src){

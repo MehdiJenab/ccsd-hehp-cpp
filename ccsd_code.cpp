@@ -9,9 +9,7 @@
 #include <jansson.h>	// to handle JSON file 
 
 #include "VectorsClass.h"
-#include "ParameterClass.h" 
-// #include "ParameterClass_NoJson.h" 
-// in case, one wants to avoid using JSON file format use this instead of "ParameterClass.h"
+#include "ParameterClass.h"
 #include "MpiClass.h"
 
 // #define timing //for timing different functions
