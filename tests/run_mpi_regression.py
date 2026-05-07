@@ -1,36 +1,36 @@
 #!/usr/bin/env python3
-"""
-Simple regression test runner for the CCSD MPI executable.
+"""Regression test runner for the CCSD MPI executable (bit-exact mode).
 
 The script launches the compiled binary with several MPI process counts and
-checks that the reported CCSD energies match the expected reference values
-within a small tolerance. Use this to quickly make sure code changes did not
-alter the numerical results.
+asserts that two specific lines appear verbatim in stdout. This is the pass-1
+contract: any change in printed digits is a code-change signal, not a
+tolerance question.
 """
 
 from __future__ import annotations
 
 import argparse
-import math
-import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-EXPECTED_CORR = -0.008225832259
-EXPECTED_TOTAL = -2.862598243
+EXPECTED_LINES = (
+    "  E(corr,CCSD) = -0.008225832259",
+    "  E(CCSD) = -2.862598243",
+)
 DEFAULT_PROCESSES = (2, 4, 8)
+DEFAULT_EXECUTABLE = "build/ccsd_code"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run CCSD regression tests across multiple MPI sizes."
+        description="Bit-exact CCSD MPI regression."
     )
     parser.add_argument(
         "--executable",
-        default="./ccsd_code",
-        help="Path to the CCSD executable (default: ./ccsd_code)",
+        default=DEFAULT_EXECUTABLE,
+        help=f"Path to the CCSD executable (default: {DEFAULT_EXECUTABLE})",
     )
     parser.add_argument(
         "--mpirun",
@@ -45,12 +45,6 @@ def parse_args() -> argparse.Namespace:
         help="List of MPI process counts to test (default: 2 4 8)",
     )
     parser.add_argument(
-        "--tol",
-        type=float,
-        default=1e-9,
-        help="Absolute tolerance for comparing energies (default: 1e-9)",
-    )
-    parser.add_argument(
         "--no-oversubscribe",
         action="store_true",
         help="Do not append --oversubscribe to mpirun invocations.",
@@ -58,17 +52,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def extract_energy(pattern: re.Pattern[str], text: str, label: str) -> float:
-    match = pattern.search(text)
-    if not match:
-        raise ValueError(f"Could not find {label} in output:\n{text}")
-    return float(match.group(1))
-
-
 def run_case(args: argparse.Namespace, np: int) -> None:
     exe = Path(args.executable)
     if not exe.exists():
-        raise FileNotFoundError(f"Executable '{exe}' not found. Build ccsd_code first.")
+        raise FileNotFoundError(
+            f"Executable '{exe}' not found. Build ccsd_code first."
+        )
 
     cmd = [args.mpirun]
     if not args.no_oversubscribe:
@@ -82,23 +71,16 @@ def run_case(args: argparse.Namespace, np: int) -> None:
         sys.stderr.write(result.stderr)
         raise RuntimeError(f"Command failed with exit code {result.returncode}")
 
-    combined_output = "\n".join([result.stdout.strip(), result.stderr.strip()]).strip()
-    corr = extract_energy(
-        re.compile(r"E\(corr,CCSD\)\s*=\s*([-\d.eE+]+)"), combined_output, "correlation energy"
-    )
-    total = extract_energy(
-        re.compile(r"E\(CCSD\)\s*=\s*([-\d.eE+]+)"), combined_output, "total energy"
-    )
-
-    if not math.isclose(corr, EXPECTED_CORR, rel_tol=0.0, abs_tol=args.tol):
-        raise AssertionError(
-            f"[np={np}] correlation energy mismatch: got {corr}, expected {EXPECTED_CORR}"
-        )
-    if not math.isclose(total, EXPECTED_TOTAL, rel_tol=0.0, abs_tol=args.tol):
-        raise AssertionError(
-            f"[np={np}] total energy mismatch: got {total}, expected {EXPECTED_TOTAL}"
-        )
-    print(f"[np={np}] PASS  (Ecorr={corr:.12f}, Etotal={total:.12f})")
+    stdout_lines = result.stdout.splitlines()
+    for expected in EXPECTED_LINES:
+        if expected not in stdout_lines:
+            sys.stderr.write(result.stdout)
+            raise AssertionError(
+                f"[np={np}] expected line not found verbatim:\n"
+                f"  expected: {expected!r}\n"
+                f"  (run with --np {np}; full stdout above)"
+            )
+    print(f"[np={np}] PASS  (bit-exact match)")
 
 
 def main() -> None:
