@@ -47,6 +47,25 @@ jobs:
       - name: Bit-exact regression (np=2 only under sanitizers)
         run: python3 tests/run_mpi_regression.py --executable build/asan/ccsd_code --np 2
 
+  release-fast:
+    name: release-fast + tolerance regression
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13 libopenmpi-dev openmpi-bin \
+                                  ninja-build cmake python3
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+      - name: Configure
+        run: cmake --preset release-fast
+      - name: Build
+        run: cmake --build --preset release-fast
+      - name: Tolerance-tier regression
+        run: python3 tests/run_mpi_regression.py \
+                --executable build/release-fast/ccsd_code --tolerance 1e-9
+
   tidy:
     name: clang-tidy
     runs-on: ubuntu-22.04

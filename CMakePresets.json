@@ -23,6 +23,14 @@
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     },
     {
+      "name": "release-fast",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -march=native -flto -DNDEBUG"
+      }
+    },
+    {
       "name": "asan",
       "inherits": "debug",
       "cacheVariables": {
@@ -55,11 +63,13 @@
     { "name": "asan",     "configurePreset": "asan" },
     { "name": "tsan",     "configurePreset": "tsan" },
     { "name": "coverage", "configurePreset": "coverage" },
-    { "name": "release-gprof", "configurePreset": "release-gprof" }
+    { "name": "release-gprof", "configurePreset": "release-gprof" },
+    { "name": "release-fast", "configurePreset": "release-fast" }
   ],
   "testPresets": [
     { "name": "debug",    "configurePreset": "debug",    "output": { "outputOnFailure": true } },
     { "name": "asan",     "configurePreset": "asan",     "output": { "outputOnFailure": true } },
-    { "name": "coverage", "configurePreset": "coverage", "output": { "outputOnFailure": true } }
+    { "name": "coverage", "configurePreset": "coverage", "output": { "outputOnFailure": true } },
+    { "name": "release-fast", "configurePreset": "release-fast", "output": { "outputOnFailure": true } }
   ]
 }
