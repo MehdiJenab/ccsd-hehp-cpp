@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <vector>
 
 namespace ccsd::timing {
@@ -11,6 +12,14 @@ class PercentileAccumulator {
 public:
     using clock      = std::chrono::steady_clock;
     using time_point = clock::time_point;
+
+    struct Snapshot {
+        double      mean;
+        double      p50;
+        double      p99;
+        double      total_seconds;
+        std::size_t count;
+    };
 
     void start() { t0_ = clock::now(); }
 
@@ -33,8 +42,7 @@ public:
         if (samples_.empty()) return 0.0;
         std::vector<double> sorted = samples_;
         std::sort(sorted.begin(), sorted.end());
-        auto idx = static_cast<std::size_t>(p * static_cast<double>(sorted.size() - 1));
-        return sorted[idx];
+        return percentile_of_sorted(sorted, p);
     }
 
     [[nodiscard]] double total_seconds() const {
@@ -43,8 +51,31 @@ public:
         return sum / 1.0e6;
     }
 
+    [[nodiscard]] Snapshot snapshot() const {
+        Snapshot s{};
+        s.count = samples_.size();
+        if (samples_.empty()) return s;
+        std::vector<double> sorted = samples_;
+        std::sort(sorted.begin(), sorted.end());
+        double sum = 0.0;
+        for (double v : sorted) sum += v;
+        s.mean          = sum / static_cast<double>(sorted.size());
+        s.p50           = percentile_of_sorted(sorted, 0.50);
+        s.p99           = percentile_of_sorted(sorted, 0.99);
+        s.total_seconds = sum / 1.0e6;
+        return s;
+    }
+
 private:
-    time_point t0_{};
+    static double percentile_of_sorted(const std::vector<double>& sorted, double p) {
+        // Nearest-rank percentile: idx = ceil(p * n) - 1, clamped to [0, n-1].
+        auto idx = static_cast<std::size_t>(std::ceil(p * static_cast<double>(sorted.size())));
+        if (idx > 0) --idx;
+        if (idx >= sorted.size()) idx = sorted.size() - 1;
+        return sorted[idx];
+    }
+
+    time_point          t0_{};
     std::vector<double> samples_;
 };
 
