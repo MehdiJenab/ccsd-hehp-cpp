@@ -23,8 +23,13 @@ for preset in $PRESETS; do
                     cmake --build --preset "$preset" --target ccsd_bench >/dev/null
                 fi
                 json="${OUT_DIR}/${preset}_np${np}_t${threads}_rep${rep}.json"
+                if [[ -n "${BIND_TO:-}" ]]; then
+                    bind_args="--bind-to ${BIND_TO} --map-by socket:PE=${threads}"
+                else
+                    bind_args=""
+                fi
                 OMP_NUM_THREADS="$threads" \
-                    mpirun --oversubscribe -np "$np" "$exe" \
+                    mpirun --oversubscribe ${bind_args} -np "$np" "$exe" \
                         --batch "$BATCH" --warmup "$WARMUP" \
                         --report "$json"
                 # Decorate with preset/threads/sha for the collator.
@@ -32,7 +37,7 @@ for preset in $PRESETS; do
 import json, subprocess, sys, os
 p = sys.argv[1]
 d = json.load(open(p))
-d['preset'] = '${preset}'
+d['preset'] = '${preset}' + ('-pinned' if '${BIND_TO:-}' else '')
 d['threads_per_rank'] = ${threads}
 d['repetition'] = ${rep}
 d['git_sha'] = subprocess.check_output(['git','rev-parse','--short','HEAD']).decode().strip()
