@@ -15,6 +15,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Reference energies. EXPECTED_LINES is the canonical printed form (used by
+# strict tier); REF_E_* are the parsed-float counterparts (used by tolerance
+# tier). Keep these three in lockstep — when a reference value changes, all
+# three constants update together.
 REF_E_CORR = -0.008225832259
 REF_E_TOTAL = -2.862598243
 EXPECTED_LINES = (
@@ -38,7 +42,45 @@ def parse_args() -> argparse.Namespace:
         "--tolerance", type=float, default=0.0,
         help="0 = bit-exact string match (default). >0 = abs-tolerance on parsed energies.",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.tolerance < 0.0:
+        parser.error("--tolerance must be >= 0")
+    return args
+
+
+def _assert_strict(stdout: str, np: int) -> None:
+    """Strict tier: every reference line must appear verbatim in stdout."""
+    stdout_lines = stdout.splitlines()
+    for expected in EXPECTED_LINES:
+        if expected not in stdout_lines:
+            sys.stderr.write(stdout)
+            raise AssertionError(
+                f"[np={np}] expected line not found verbatim:\n"
+                f"  expected: {expected!r}"
+            )
+    print(f"[np={np}] PASS  (bit-exact)")
+
+
+def _assert_within_tolerance(stdout: str, np: int, tol: float) -> None:
+    """Tolerance tier: parse energies and assert |actual - reference| < tol."""
+    m_corr = CORR_RE.search(stdout)
+    m_total = TOTAL_RE.search(stdout)
+    if not (m_corr and m_total):
+        sys.stderr.write(stdout)
+        raise AssertionError(f"[np={np}] could not parse energies from output")
+    e_corr = float(m_corr.group(1))
+    e_total = float(m_total.group(1))
+    if abs(e_corr - REF_E_CORR) >= tol:
+        raise AssertionError(
+            f"[np={np}] E_corr off by {abs(e_corr - REF_E_CORR):.3e} "
+            f"(tolerance {tol:.3e})"
+        )
+    if abs(e_total - REF_E_TOTAL) >= tol:
+        raise AssertionError(
+            f"[np={np}] E_total off by {abs(e_total - REF_E_TOTAL):.3e} "
+            f"(tolerance {tol:.3e})"
+        )
+    print(f"[np={np}] PASS  (tolerance {tol:.0e})")
 
 
 def run_case(args: argparse.Namespace, np: int) -> None:
@@ -59,37 +101,9 @@ def run_case(args: argparse.Namespace, np: int) -> None:
         raise RuntimeError(f"Command failed with exit code {result.returncode}")
 
     if args.tolerance == 0.0:
-        # Strict tier — verbatim line match.
-        stdout_lines = result.stdout.splitlines()
-        for expected in EXPECTED_LINES:
-            if expected not in stdout_lines:
-                sys.stderr.write(result.stdout)
-                raise AssertionError(
-                    f"[np={np}] expected line not found verbatim:\n"
-                    f"  expected: {expected!r}"
-                )
-        print(f"[np={np}] PASS  (bit-exact)")
-        return
-
-    # Tolerance tier — parse and compare.
-    m_corr = CORR_RE.search(result.stdout)
-    m_total = TOTAL_RE.search(result.stdout)
-    if not (m_corr and m_total):
-        sys.stderr.write(result.stdout)
-        raise AssertionError(f"[np={np}] could not parse energies from output")
-    e_corr = float(m_corr.group(1))
-    e_total = float(m_total.group(1))
-    if abs(e_corr - REF_E_CORR) >= args.tolerance:
-        raise AssertionError(
-            f"[np={np}] E_corr off by {abs(e_corr - REF_E_CORR):.3e} "
-            f"(tolerance {args.tolerance:.3e})"
-        )
-    if abs(e_total - REF_E_TOTAL) >= args.tolerance:
-        raise AssertionError(
-            f"[np={np}] E_total off by {abs(e_total - REF_E_TOTAL):.3e} "
-            f"(tolerance {args.tolerance:.3e})"
-        )
-    print(f"[np={np}] PASS  (tolerance {args.tolerance:.0e})")
+        _assert_strict(result.stdout, np)
+    else:
+        _assert_within_tolerance(result.stdout, np, args.tolerance)
 
 
 def main() -> None:
