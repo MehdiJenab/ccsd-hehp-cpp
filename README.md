@@ -6,6 +6,10 @@ code published by Joshua Goings. The translation mirrors the mathematical
 structure and loop ordering of the reference so that numerical comparisons are
 straightforward.
 
+For pass-2 performance numbers and methodology, see
+[docs/benchmarks/pass-2-results.md](docs/benchmarks/pass-2-results.md) and
+[docs/benchmarks/methodology.md](docs/benchmarks/methodology.md).
+
 ## References
 
 - T. Daniel Crawford and Henry F. Schaefer III, “An introduction to coupled
