@@ -39,6 +39,14 @@
       "name": "coverage",
       "inherits": "debug",
       "cacheVariables": { "CCSD_ENABLE_COVERAGE": "ON" }
+    },
+    {
+      "name": "release-gprof",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CCSD_ENABLE_GPROF": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -46,7 +54,8 @@
     { "name": "release",  "configurePreset": "release" },
     { "name": "asan",     "configurePreset": "asan" },
     { "name": "tsan",     "configurePreset": "tsan" },
-    { "name": "coverage", "configurePreset": "coverage" }
+    { "name": "coverage", "configurePreset": "coverage" },
+    { "name": "release-gprof", "configurePreset": "release-gprof" }
   ],
   "testPresets": [
     { "name": "debug",    "configurePreset": "debug",    "output": { "outputOnFailure": true } },
