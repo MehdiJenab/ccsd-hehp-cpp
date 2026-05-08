@@ -1,4 +1,4 @@
-.PHONY: help configure build test asan tsan coverage tidy format check regression clean
+.PHONY: help configure build test asan tsan coverage tidy format check regression bench bench-quick clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -32,6 +32,13 @@ format:  ## clang-format in place
 	clang-format -i $$(git ls-files '*.cpp' '*.hpp' '*.h' | grep -v '^build')
 
 check: format tidy test regression  ## Full quality suite
+
+bench:  ## Run canonical bench matrix and refresh report
+	bash benchmarks/run_bench.sh
+
+bench-quick:  ## Smaller bench matrix for fast iteration
+	BATCH=200 WARMUP=20 REPETITIONS=1 NP_LIST="2 4" THREADS_LIST="1" \
+	    bash benchmarks/run_bench.sh
 
 clean:  ## Remove build directories
 	rm -rf build/
