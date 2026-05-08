@@ -60,8 +60,13 @@ public:
 
 private:
     [[nodiscard]] std::size_t index(int i, int j) const noexcept {
+#ifdef CCSD_LAYOUT_ROW_MAJOR
+        return static_cast<std::size_t>(i) * static_cast<std::size_t>(n2_)
+             + static_cast<std::size_t>(j);
+#else
         return static_cast<std::size_t>(j) * static_cast<std::size_t>(n1_)
              + static_cast<std::size_t>(i);
+#endif
     }
 
     int n1_ = 0, n2_ = 0, n_size_ = 0;
@@ -97,13 +102,21 @@ public:
 
 private:
     [[nodiscard]] std::size_t index(int i, int j, int k, int l) const noexcept {
-        const auto N1 = static_cast<std::size_t>(n1_);
+        [[maybe_unused]] const auto N1 = static_cast<std::size_t>(n1_);
         const auto N2 = static_cast<std::size_t>(n2_);
         const auto N3 = static_cast<std::size_t>(n3_);
+        [[maybe_unused]] const auto N4 = static_cast<std::size_t>(n4_);
+#ifdef CCSD_LAYOUT_ROW_MAJOR
+        return ((static_cast<std::size_t>(i) * N2
+               + static_cast<std::size_t>(j)) * N3
+               + static_cast<std::size_t>(k)) * N4
+               + static_cast<std::size_t>(l);
+#else
         return static_cast<std::size_t>(l) * N1 * N2 * N3
              + static_cast<std::size_t>(k) * N1 * N2
              + static_cast<std::size_t>(j) * N1
              + static_cast<std::size_t>(i);
+#endif
     }
 
     int n1_ = 0, n2_ = 0, n3_ = 0, n4_ = 0, n_size_ = 0;

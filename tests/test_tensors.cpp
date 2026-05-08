@@ -3,6 +3,7 @@
 #include <ccsd/tensors.hpp>
 #include <experimental/mdspan>
 
+#ifndef CCSD_LAYOUT_ROW_MAJOR
 TEST_CASE("Vector2D index encoding matches legacy layout", "[tensor][2d]") {
     ccsd::Vector2D v;
     int dim = 4;
@@ -39,6 +40,37 @@ TEST_CASE("Vector4D index encoding matches legacy layout", "[tensor][4d]") {
     REQUIRE(t.raw()[dim * dim]         == static_cast<double>(dim * dim));        // (0,0,1,0)
     REQUIRE(t.raw()[dim * dim * dim]   == static_cast<double>(dim * dim * dim));  // (0,0,0,1)
 }
+#endif
+
+#ifdef CCSD_LAYOUT_ROW_MAJOR
+TEST_CASE("Vector2D row-major index encoding", "[tensor][2d][row]") {
+    ccsd::Vector2D v;
+    int dim = 4;
+    v.initialization(dim);
+    for (int i = 0; i < dim; ++i)
+        for (int j = 0; j < dim; ++j)
+            v(i, j) = static_cast<double>(i * dim + j);
+    REQUIRE(v.raw()[0] == 0.0);                                 // (0,0)
+    REQUIRE(v.raw()[1] == 1.0);                                 // (0,1)
+    REQUIRE(v.raw()[dim] == static_cast<double>(dim));          // (1,0)
+}
+
+TEST_CASE("Vector4D row-major index encoding", "[tensor][4d][row]") {
+    ccsd::Vector4D t;
+    int dim = 3;
+    t.initialization(dim);
+    for (int i = 0; i < dim; ++i)
+        for (int j = 0; j < dim; ++j)
+            for (int k = 0; k < dim; ++k)
+                for (int l = 0; l < dim; ++l)
+                    t(i, j, k, l) = static_cast<double>(((i * dim + j) * dim + k) * dim + l);
+    REQUIRE(t.raw()[0]                 == 0.0);                                   // (0,0,0,0)
+    REQUIRE(t.raw()[1]                 == 1.0);                                   // (0,0,0,1)
+    REQUIRE(t.raw()[dim]               == static_cast<double>(dim));              // (0,0,1,0)
+    REQUIRE(t.raw()[dim * dim]         == static_cast<double>(dim * dim));        // (0,1,0,0)
+    REQUIRE(t.raw()[dim * dim * dim]   == static_cast<double>(dim * dim * dim));  // (1,0,0,0)
+}
+#endif
 
 TEST_CASE("Vector2D::zeros resets storage", "[tensor][zeros]") {
     ccsd::Vector2D v;

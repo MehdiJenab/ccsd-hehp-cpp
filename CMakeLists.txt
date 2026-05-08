@@ -27,6 +27,11 @@ if(CCSD_USE_MDSPAN)
     link_libraries(ccsd::mdspan)
 endif()
 
+option(CCSD_LAYOUT_ROW_MAJOR "Use row-major layout for tensors" OFF)
+if(CCSD_LAYOUT_ROW_MAJOR)
+    add_compile_definitions(CCSD_LAYOUT_ROW_MAJOR=1)
+endif()
+
 function(ccsd_apply_flags TARGET)
     project_apply_warnings(${TARGET})
     if(CCSD_ENABLE_ASAN)
