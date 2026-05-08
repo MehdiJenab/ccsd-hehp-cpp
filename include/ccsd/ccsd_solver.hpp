@@ -14,6 +14,13 @@
 #include <ccsd/parameters.hpp>
 #include <ccsd/tensors.hpp>
 
+#ifdef CCSD_USE_OMP
+  #include <omp.h>
+  #define CCSD_OMP_PARALLEL_FOR _Pragma("omp parallel for")
+#else
+  #define CCSD_OMP_PARALLEL_FOR
+#endif
+
 using namespace std;  // pre-existing in legacy ccsd_code.cpp; preserved here
 
 struct Timer
@@ -368,6 +375,7 @@ public:
 //-----------------------------------------------------------------------------
 	void get_Wmbej(){ // Stanton eq (8)
 		Wmbej.zeros();
+		CCSD_OMP_PARALLEL_FOR
 		for (int m = 0; m < p.Nelec; ++m){
 			for (int b = p.Nelec; b < dim2; ++b){
 				for (int e = p.Nelec; e < dim2; ++e){
@@ -455,6 +463,7 @@ public:
 		}
 
 		if (mpi.rank==rank_master){
+		CCSD_OMP_PARALLEL_FOR
 		for (int a = p.Nelec; a < dim2; ++a){
 			for (int i = 0; i < p.Nelec; ++i){
 				tsnew(a,i) = fs(i,a);
@@ -504,6 +513,7 @@ public:
 		
 		
 		if (mpi.rank==rank_master){
+			CCSD_OMP_PARALLEL_FOR
 			for (int a = p.Nelec; a < dim2; ++a){
 				for (int b = p.Nelec; b < dim2; ++b){
 					for (int i = 0; i < p.Nelec; ++i){

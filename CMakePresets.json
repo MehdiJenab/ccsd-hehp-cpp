@@ -83,6 +83,11 @@
       "cacheVariables": { "CCSD_USE_MDSPAN": "ON" }
     },
     {
+      "name": "release-omp",
+      "inherits": "release-fast",
+      "cacheVariables": { "CCSD_USE_OMP": "ON" }
+    },
+    {
       "name": "release-mdspan-rowmajor",
       "inherits": "release-mdspan",
       "cacheVariables": { "CCSD_LAYOUT_ROW_MAJOR": "ON" }
@@ -99,7 +104,8 @@
     { "name": "release-fast-instrument", "configurePreset": "release-fast-instrument" },
     { "name": "release-fast-pgo", "configurePreset": "release-fast-pgo" },
     { "name": "release-mdspan", "configurePreset": "release-mdspan" },
-    { "name": "release-mdspan-rowmajor", "configurePreset": "release-mdspan-rowmajor" }
+    { "name": "release-mdspan-rowmajor", "configurePreset": "release-mdspan-rowmajor" },
+    { "name": "release-omp", "configurePreset": "release-omp" }
   ],
   "testPresets": [
     { "name": "debug",    "configurePreset": "debug",    "output": { "outputOnFailure": true } },
@@ -107,6 +113,7 @@
     { "name": "coverage", "configurePreset": "coverage", "output": { "outputOnFailure": true } },
     { "name": "release-fast", "configurePreset": "release-fast", "output": { "outputOnFailure": true } },
     { "name": "release-mdspan", "configurePreset": "release-mdspan", "output": { "outputOnFailure": true } },
-    { "name": "release-mdspan-rowmajor", "configurePreset": "release-mdspan-rowmajor", "output": { "outputOnFailure": true } }
+    { "name": "release-mdspan-rowmajor", "configurePreset": "release-mdspan-rowmajor", "output": { "outputOnFailure": true } },
+    { "name": "release-omp", "configurePreset": "release-omp", "output": { "outputOnFailure": true } }
   ]
 }

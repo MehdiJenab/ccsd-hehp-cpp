@@ -10,3 +10,7 @@ Updated automatically by `benchmarks/plot_or_table.py`. Best of 3 medians per ro
 | release-fast-pgo | 4 | 1 | 281 | 1.03× |
 | release-mdspan | 4 | 1 | 301 | 0.96× |
 | release-mdspan-rowmajor | 4 | 1 | 299 | 0.97× |
+| release-omp | 2 | 1 | 270 | 1.07× |
+| release-omp | 2 | 4 | 1030 | 0.28× |
+| release-omp | 4 | 1 | 347 | 0.84× |
+| release-omp | 4 | 4 | 357 | 0.81× |

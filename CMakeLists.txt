@@ -59,6 +59,16 @@ endfunction()
 # Find MPI
 find_package(MPI REQUIRED)
 
+find_package(OpenMP)
+
+option(CCSD_USE_OMP "Enable OpenMP parallel for in hot loops" OFF)
+if(CCSD_USE_OMP)
+    if(NOT OpenMP_CXX_FOUND)
+        message(FATAL_ERROR "CCSD_USE_OMP=ON but OpenMP not found")
+    endif()
+    add_compile_definitions(CCSD_USE_OMP=1)
+endif()
+
 # nlohmann/json (header-only, fetched at configure)
 include(FetchContent)
 FetchContent_Declare(
@@ -85,7 +95,7 @@ add_executable(ccsd_code ${SOURCES})
 ccsd_apply_flags(ccsd_code)
 
 # Link MPI and nlohmann/json
-target_link_libraries(ccsd_code PRIVATE MPI::MPI_CXX nlohmann_json::nlohmann_json)
+target_link_libraries(ccsd_code PRIVATE MPI::MPI_CXX nlohmann_json::nlohmann_json $<$<BOOL:${CCSD_USE_OMP}>:OpenMP::OpenMP_CXX>)
 
 # Include directories
 target_include_directories(ccsd_code PRIVATE
@@ -95,7 +105,7 @@ target_include_directories(ccsd_code PRIVATE
 # Throughput-batch benchmark driver
 add_executable(ccsd_bench apps/ccsd_bench.cpp)
 ccsd_apply_flags(ccsd_bench)
-target_link_libraries(ccsd_bench PRIVATE MPI::MPI_CXX nlohmann_json::nlohmann_json)
+target_link_libraries(ccsd_bench PRIVATE MPI::MPI_CXX nlohmann_json::nlohmann_json $<$<BOOL:${CCSD_USE_OMP}>:OpenMP::OpenMP_CXX>)
 target_include_directories(ccsd_bench PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR})
