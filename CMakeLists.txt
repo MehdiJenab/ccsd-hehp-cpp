@@ -12,6 +12,7 @@ option(BUILD_TESTING "Build tests" ON)
 # ── Pass-1 modernization additions ────────────────────────────────────────────
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(ProjectWarnings)
+include(ccsd_mdspan)
 
 option(CCSD_ENABLE_ASAN     "AddressSanitizer"  OFF)
 option(CCSD_ENABLE_UBSAN    "UBSanitizer"       OFF)
@@ -261,7 +262,7 @@ if(BUILD_TESTING)
 
     # Tensor unit tests
     add_executable(test_tensors tests/test_tensors.cpp)
-    target_link_libraries(test_tensors PRIVATE Catch2::Catch2WithMain)
+    target_link_libraries(test_tensors PRIVATE Catch2::Catch2WithMain ccsd::mdspan)
     target_include_directories(test_tensors PRIVATE ${CMAKE_SOURCE_DIR}/include)
     ccsd_apply_flags(test_tensors)
     include(Catch)

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <ccsd/tensors.hpp>
+#include <experimental/mdspan>
 
 TEST_CASE("Vector2D index encoding matches legacy layout", "[tensor][2d]") {
     ccsd::Vector2D v;
@@ -58,4 +59,14 @@ TEST_CASE("Vector2D::diagonalize places vector on the diagonal", "[tensor][diag]
     REQUIRE(v(2, 2) == 3.0);
     REQUIRE(v(0, 1) == 0.0);
     REQUIRE(v(2, 0) == 0.0);
+}
+
+TEST_CASE("mdspan reference impl is available", "[mdspan][smoke]") {
+    std::vector<double> storage(12, 0.0);
+    using extents_t = std::experimental::extents<int, 3, 4>;
+    std::experimental::mdspan<double, extents_t> view(storage.data());
+    view(1, 2) = 7.0;
+    REQUIRE(storage[1 * 4 + 2] == 7.0);  // default layout_right (row-major)
+    REQUIRE(view.extent(0) == 3);
+    REQUIRE(view.extent(1) == 4);
 }
