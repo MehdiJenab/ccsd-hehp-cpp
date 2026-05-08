@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
-"""Regression test runner for the CCSD MPI executable (bit-exact mode).
+"""Regression test runner for the CCSD MPI executable (two-tier).
 
-The script launches the compiled binary with several MPI process counts and
-asserts that two specific lines appear verbatim in stdout. This is the pass-1
-contract: any change in printed digits is a code-change signal, not a
-tolerance question.
+Strict tier (default, --tolerance 0): asserts the two energy lines appear
+verbatim in stdout. Tolerance tier (--tolerance T > 0): parses the printed
+energies and asserts |actual - reference| < T.
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+REF_E_CORR = -0.008225832259
+REF_E_TOTAL = -2.862598243
 EXPECTED_LINES = (
     "  E(corr,CCSD) = -0.008225832259",
     "  E(CCSD) = -2.862598243",
@@ -22,32 +24,19 @@ EXPECTED_LINES = (
 DEFAULT_PROCESSES = (2, 4, 8)
 DEFAULT_EXECUTABLE = "build/ccsd_code"
 
+CORR_RE = re.compile(r"E\(corr,CCSD\)\s*=\s*([-\d.eE+]+)")
+TOTAL_RE = re.compile(r"E\(CCSD\)\s*=\s*([-\d.eE+]+)")
+
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Bit-exact CCSD MPI regression."
-    )
+    parser = argparse.ArgumentParser(description="Two-tier CCSD MPI regression.")
+    parser.add_argument("--executable", default=DEFAULT_EXECUTABLE)
+    parser.add_argument("--mpirun", default=shutil.which("mpirun") or "mpirun")
+    parser.add_argument("--np", nargs="+", type=int, default=list(DEFAULT_PROCESSES))
+    parser.add_argument("--no-oversubscribe", action="store_true")
     parser.add_argument(
-        "--executable",
-        default=DEFAULT_EXECUTABLE,
-        help=f"Path to the CCSD executable (default: {DEFAULT_EXECUTABLE})",
-    )
-    parser.add_argument(
-        "--mpirun",
-        default=shutil.which("mpirun") or "mpirun",
-        help="mpirun command to use (default: first mpirun on PATH)",
-    )
-    parser.add_argument(
-        "--np",
-        nargs="+",
-        type=int,
-        default=list(DEFAULT_PROCESSES),
-        help="List of MPI process counts to test (default: 2 4 8)",
-    )
-    parser.add_argument(
-        "--no-oversubscribe",
-        action="store_true",
-        help="Do not append --oversubscribe to mpirun invocations.",
+        "--tolerance", type=float, default=0.0,
+        help="0 = bit-exact string match (default). >0 = abs-tolerance on parsed energies.",
     )
     return parser.parse_args()
 
@@ -55,9 +44,7 @@ def parse_args() -> argparse.Namespace:
 def run_case(args: argparse.Namespace, np: int) -> None:
     exe = Path(args.executable)
     if not exe.exists():
-        raise FileNotFoundError(
-            f"Executable '{exe}' not found. Build ccsd_code first."
-        )
+        raise FileNotFoundError(f"Executable '{exe}' not found. Build first.")
 
     cmd = [args.mpirun]
     if not args.no_oversubscribe:
@@ -71,16 +58,38 @@ def run_case(args: argparse.Namespace, np: int) -> None:
         sys.stderr.write(result.stderr)
         raise RuntimeError(f"Command failed with exit code {result.returncode}")
 
-    stdout_lines = result.stdout.splitlines()
-    for expected in EXPECTED_LINES:
-        if expected not in stdout_lines:
-            sys.stderr.write(result.stdout)
-            raise AssertionError(
-                f"[np={np}] expected line not found verbatim:\n"
-                f"  expected: {expected!r}\n"
-                f"  (run with --np {np}; full stdout above)"
-            )
-    print(f"[np={np}] PASS  (bit-exact match)")
+    if args.tolerance == 0.0:
+        # Strict tier — verbatim line match.
+        stdout_lines = result.stdout.splitlines()
+        for expected in EXPECTED_LINES:
+            if expected not in stdout_lines:
+                sys.stderr.write(result.stdout)
+                raise AssertionError(
+                    f"[np={np}] expected line not found verbatim:\n"
+                    f"  expected: {expected!r}"
+                )
+        print(f"[np={np}] PASS  (bit-exact)")
+        return
+
+    # Tolerance tier — parse and compare.
+    m_corr = CORR_RE.search(result.stdout)
+    m_total = TOTAL_RE.search(result.stdout)
+    if not (m_corr and m_total):
+        sys.stderr.write(result.stdout)
+        raise AssertionError(f"[np={np}] could not parse energies from output")
+    e_corr = float(m_corr.group(1))
+    e_total = float(m_total.group(1))
+    if abs(e_corr - REF_E_CORR) >= args.tolerance:
+        raise AssertionError(
+            f"[np={np}] E_corr off by {abs(e_corr - REF_E_CORR):.3e} "
+            f"(tolerance {args.tolerance:.3e})"
+        )
+    if abs(e_total - REF_E_TOTAL) >= args.tolerance:
+        raise AssertionError(
+            f"[np={np}] E_total off by {abs(e_total - REF_E_TOTAL):.3e} "
+            f"(tolerance {args.tolerance:.3e})"
+        )
+    print(f"[np={np}] PASS  (tolerance {args.tolerance:.0e})")
 
 
 def main() -> None:
