@@ -58,6 +58,24 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CCSD_ENABLE_GPROF": "ON"
       }
+    },
+    {
+      "name": "release-fast-instrument",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -march=native -flto -fprofile-generate=${sourceDir}/build/pgo-data -DNDEBUG",
+        "CMAKE_EXE_LINKER_FLAGS_RELEASE": "-fprofile-generate=${sourceDir}/build/pgo-data"
+      }
+    },
+    {
+      "name": "release-fast-pgo",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -march=native -flto -fprofile-use=${sourceDir}/build/pgo-data -fprofile-correction -DNDEBUG",
+        "CMAKE_EXE_LINKER_FLAGS_RELEASE": "-fprofile-use=${sourceDir}/build/pgo-data -fprofile-correction"
+      }
     }
   ],
   "buildPresets": [
@@ -67,7 +85,9 @@
     { "name": "tsan",     "configurePreset": "tsan" },
     { "name": "coverage", "configurePreset": "coverage" },
     { "name": "release-gprof", "configurePreset": "release-gprof" },
-    { "name": "release-fast", "configurePreset": "release-fast" }
+    { "name": "release-fast", "configurePreset": "release-fast" },
+    { "name": "release-fast-instrument", "configurePreset": "release-fast-instrument" },
+    { "name": "release-fast-pgo", "configurePreset": "release-fast-pgo" }
   ],
   "testPresets": [
     { "name": "debug",    "configurePreset": "debug",    "output": { "outputOnFailure": true } },

@@ -1,4 +1,4 @@
-.PHONY: help configure build test asan tsan coverage tidy format check regression bench bench-quick clean
+.PHONY: help configure build test asan tsan coverage tidy format check regression bench bench-quick bench-pgo clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -38,6 +38,20 @@ bench:  ## Run canonical bench matrix and refresh report
 
 bench-quick:  ## Smaller bench matrix for fast iteration
 	BATCH=200 WARMUP=20 REPETITIONS=1 NP_LIST="2 4" THREADS_LIST="1" \
+	    bash benchmarks/run_bench.sh
+
+bench-pgo:  ## Two-stage PGO build + bench
+	rm -rf build/pgo-data
+	mkdir -p build/pgo-data
+	cmake --preset release-fast-instrument
+	cmake --build --preset release-fast-instrument --target ccsd_bench
+	mpirun --oversubscribe -np 4 build/release-fast-instrument/ccsd_bench --batch 200 --warmup 20
+	cmake --preset release-fast-pgo
+	cmake --build --preset release-fast-pgo
+	python3 tests/run_mpi_regression.py \
+	    --executable build/release-fast-pgo/ccsd_code --tolerance 1e-9
+	PRESETS="release-fast-pgo" NP_LIST="4" THREADS_LIST="1" \
+	    BATCH=1000 WARMUP=50 REPETITIONS=3 \
 	    bash benchmarks/run_bench.sh
 
 clean:  ## Remove build directories
