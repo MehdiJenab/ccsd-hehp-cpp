@@ -425,8 +425,17 @@ public:
 // makeT1 and makeT2, as they imply, construct the actual amplitudes necessary for computing
 // the CCSD energy (or computing an EOM-CCSD Hamiltonian, etc)
 
+// P13 collective-ops audit (pass-2):
+// All sendVec2D / sendVec4D callsites in makeT1_s / makeT2_d are directed sends from a
+// per-tensor compute rank (Fae.rank, Fme.rank, Fmi.rank, Wabef.rank, Wmbej.rank, Wmnij.rank)
+// to rank_master, which is the sole consumer inside the master-only loop nests below.
+// The dataflow is scatter-compute -> gather-on-master -> broadcast-result: the resulting
+// tsnew/tdnew are subsequently MPI_Bcast to all ranks in run(). Replacing the directed
+// send with MPI_Bcast here would unnecessarily fan out per-tensor intermediates to every
+// rank even though only rank_master uses them. Audit conclusion: keep point-to-point.
+
 //-----------------------------------------------------------------------------
-	void sendVec2D(Vector2D &vec2D, int &rank_src, int &rank_dst){  
+	void sendVec2D(Vector2D &vec2D, int &rank_src, int &rank_dst){
 		if (mpi.rank==rank_src){
 				ccsd::mpi::send(vec2D, rank_dst);
 		}
