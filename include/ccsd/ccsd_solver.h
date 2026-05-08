@@ -17,10 +17,12 @@ public:
 
     void run();
 
+    // Pure math helper — no member state; accessible for unit testing.
+    [[nodiscard]] static double get_key(double a, double b, double c, double d);
+
 private:
     void guess_T2();
     void get_denominator_arrays();
-    [[nodiscard]] double get_key(double a, double b, double c, double d) const;
     [[nodiscard]] double get_value(double a, double b, double c, double d) const;
     void get_spinints();
     void get_fs();

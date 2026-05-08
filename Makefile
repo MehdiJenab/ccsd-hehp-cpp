@@ -13,7 +13,7 @@ test: build  ## Run unit tests (debug)
 	ctest --preset debug
 
 regression: build  ## Run bit-exact MPI regression
-	python3 tests/run_mpi_regression.py --executable build/debug/ccsd_code
+	python3 tests/run_mpi_regression.py --executable build/debug/apps/ccsd_code
 
 asan:  ## ASan + UBSan
 	cmake --preset asan && cmake --build --preset asan && ctest --preset asan

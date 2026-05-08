@@ -57,7 +57,7 @@ void CcsdSolver::get_denominator_arrays(){ // Make denominator arrays Dai, Dabij
 
 
 //=============================================================================
-double CcsdSolver::get_key(double a, double b, double c, double d) const { // Return compound index given four indices
+double CcsdSolver::get_key(double a, double b, double c, double d) { // Return compound index given four indices
 	double ab,cd,abcd;
 	if (a > b){
 		ab = a*(a+1)/2 + b;
