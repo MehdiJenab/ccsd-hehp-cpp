@@ -20,6 +20,13 @@ option(CCSD_ENABLE_TSAN     "ThreadSanitizer"   OFF)
 option(CCSD_ENABLE_COVERAGE "Code coverage"     OFF)
 option(CCSD_ENABLE_GPROF    "Enable gprof instrumentation (-pg)" OFF)
 
+option(CCSD_USE_MDSPAN "Use mdspan-backed tensors" OFF)
+
+if(CCSD_USE_MDSPAN)
+    add_compile_definitions(CCSD_USE_MDSPAN=1)
+    link_libraries(ccsd::mdspan)
+endif()
+
 function(ccsd_apply_flags TARGET)
     project_apply_warnings(${TARGET})
     if(CCSD_ENABLE_ASAN)

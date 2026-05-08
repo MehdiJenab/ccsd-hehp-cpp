@@ -76,6 +76,11 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-O3 -march=native -flto -fprofile-use=${sourceDir}/build/pgo-data -fprofile-correction -DNDEBUG",
         "CMAKE_EXE_LINKER_FLAGS_RELEASE": "-fprofile-use=${sourceDir}/build/pgo-data -fprofile-correction"
       }
+    },
+    {
+      "name": "release-mdspan",
+      "inherits": "release-fast",
+      "cacheVariables": { "CCSD_USE_MDSPAN": "ON" }
     }
   ],
   "buildPresets": [
@@ -87,12 +92,14 @@
     { "name": "release-gprof", "configurePreset": "release-gprof" },
     { "name": "release-fast", "configurePreset": "release-fast" },
     { "name": "release-fast-instrument", "configurePreset": "release-fast-instrument" },
-    { "name": "release-fast-pgo", "configurePreset": "release-fast-pgo" }
+    { "name": "release-fast-pgo", "configurePreset": "release-fast-pgo" },
+    { "name": "release-mdspan", "configurePreset": "release-mdspan" }
   ],
   "testPresets": [
     { "name": "debug",    "configurePreset": "debug",    "output": { "outputOnFailure": true } },
     { "name": "asan",     "configurePreset": "asan",     "output": { "outputOnFailure": true } },
     { "name": "coverage", "configurePreset": "coverage", "output": { "outputOnFailure": true } },
-    { "name": "release-fast", "configurePreset": "release-fast", "output": { "outputOnFailure": true } }
+    { "name": "release-fast", "configurePreset": "release-fast", "output": { "outputOnFailure": true } },
+    { "name": "release-mdspan", "configurePreset": "release-mdspan", "output": { "outputOnFailure": true } }
   ]
 }
