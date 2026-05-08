@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(CCSD_Code VERSION 1.0.0 LANGUAGES CXX)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -87,28 +87,31 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
-# Source files
-set(SOURCES apps/ccsd_code.cpp)
-
-# Create executable
-add_executable(ccsd_code ${SOURCES})
-ccsd_apply_flags(ccsd_code)
-
-# Link MPI and nlohmann/json
-target_link_libraries(ccsd_code PRIVATE MPI::MPI_CXX nlohmann_json::nlohmann_json $<$<BOOL:${CCSD_USE_OMP}>:OpenMP::OpenMP_CXX>)
-
-# Include directories
-target_include_directories(ccsd_code PRIVATE
+# ccsd_core static library (solver implementation)
+add_library(ccsd_core STATIC src/ccsd_solver.cpp)
+ccsd_apply_flags(ccsd_core)
+target_include_directories(ccsd_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(ccsd_core PUBLIC MPI::MPI_CXX nlohmann_json::nlohmann_json)
+if(CCSD_USE_OMP AND OpenMP_CXX_FOUND)
+    target_link_libraries(ccsd_core PUBLIC OpenMP::OpenMP_CXX)
+endif()
+if(CCSD_USE_MDSPAN)
+    target_link_libraries(ccsd_core PUBLIC ccsd::mdspan)
+endif()
+
+# Create executable
+add_executable(ccsd_code apps/ccsd_code.cpp)
+ccsd_apply_flags(ccsd_code)
+target_link_libraries(ccsd_code PRIVATE ccsd_core)
+target_include_directories(ccsd_code PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Throughput-batch benchmark driver
 add_executable(ccsd_bench apps/ccsd_bench.cpp)
 ccsd_apply_flags(ccsd_bench)
-target_link_libraries(ccsd_bench PRIVATE MPI::MPI_CXX nlohmann_json::nlohmann_json $<$<BOOL:${CCSD_USE_OMP}>:OpenMP::OpenMP_CXX>)
-target_include_directories(ccsd_bench PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(ccsd_bench PRIVATE ccsd_core)
+target_include_directories(ccsd_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Installation
 install(TARGETS ccsd_code
@@ -284,7 +287,7 @@ if(BUILD_TESTING)
 
     # Tensor unit tests
     add_executable(test_tensors tests/test_tensors.cpp)
-    target_link_libraries(test_tensors PRIVATE Catch2::Catch2WithMain ccsd::mdspan)
+    target_link_libraries(test_tensors PRIVATE Catch2::Catch2WithMain ccsd_core ccsd::mdspan)
     target_include_directories(test_tensors PRIVATE ${CMAKE_SOURCE_DIR}/include)
     ccsd_apply_flags(test_tensors)
     include(Catch)
@@ -292,7 +295,7 @@ if(BUILD_TESTING)
 
     # Parameter parsing tests
     add_executable(test_parameters tests/test_parameters.cpp)
-    target_link_libraries(test_parameters PRIVATE Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
+    target_link_libraries(test_parameters PRIVATE Catch2::Catch2WithMain ccsd_core nlohmann_json::nlohmann_json)
     target_include_directories(test_parameters PRIVATE ${CMAKE_SOURCE_DIR}/include)
     ccsd_apply_flags(test_parameters)
     catch_discover_tests(test_parameters)

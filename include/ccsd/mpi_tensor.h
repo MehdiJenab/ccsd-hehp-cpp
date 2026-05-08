@@ -2,7 +2,7 @@
 
 #include <mpi.h>
 
-#include <ccsd/tensors.hpp>
+#include <ccsd/tensors.h>
 
 namespace ccsd::mpi {
 

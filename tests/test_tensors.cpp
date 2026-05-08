@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <ccsd/tensors.hpp>
+#include <ccsd/tensors.h>
 #include <experimental/mdspan>
 
 #ifndef CCSD_LAYOUT_ROW_MAJOR
@@ -97,7 +97,7 @@ TEST_CASE("mdspan reference impl is available", "[mdspan][smoke]") {
     std::vector<double> storage(12, 0.0);
     using extents_t = std::experimental::extents<int, 3, 4>;
     std::experimental::mdspan<double, extents_t> view(storage.data());
-    view(1, 2) = 7.0;
+    view[1, 2] = 7.0;
     REQUIRE(storage[1 * 4 + 2] == 7.0);  // default layout_right (row-major)
     REQUIRE(view.extent(0) == 3);
     REQUIRE(view.extent(1) == 4);

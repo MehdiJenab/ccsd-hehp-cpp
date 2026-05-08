@@ -1,5 +1,5 @@
-#include <ccsd/ccsd_solver.hpp>
-#include <ccsd/timing.hpp>
+#include <ccsd/ccsd_solver.h>
+#include <ccsd/timing.h>
 
 #include <cstdio>
 #include <cstdlib>

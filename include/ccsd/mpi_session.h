@@ -30,14 +30,11 @@ private:
 
 }  // namespace ccsd
 
-// Backwards-compat shim used by ccsd_code.cpp until globals are removed in T09.
-// Kept deliberately small.
+// Backwards-compat POD used by CcsdSolver for rank/size bookkeeping.
 class MpiClass {
 public:
     int size = 0;
     int rank = 0;
-    int NODE = 0;
-    MPI_Comm COMM_CART = MPI_COMM_NULL;
 };
 
 #endif  // MpiClass_Included
