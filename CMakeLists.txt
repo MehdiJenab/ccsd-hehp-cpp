@@ -74,6 +74,14 @@ target_include_directories(ccsd_code PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Throughput-batch benchmark driver
+add_executable(ccsd_bench apps/ccsd_bench.cpp)
+ccsd_apply_flags(ccsd_bench)
+target_link_libraries(ccsd_bench PRIVATE MPI::MPI_CXX nlohmann_json::nlohmann_json)
+target_include_directories(ccsd_bench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR})
+
 # Installation
 install(TARGETS ccsd_code
     RUNTIME DESTINATION bin
