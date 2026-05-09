@@ -37,13 +37,31 @@ public:
     // Compound index hash — public for unit testing.
     [[nodiscard]] static double get_key(double a, double b, double c, double d);
 
+    // Named mathematical intermediates (Stanton eqs. 9–10) — public for unit testing.
+    [[nodiscard]] double tau_tilde(int a, int b, int i, int j) const;  // Stanton eq. (9): τ̃_{abij} = T2 + ½(T1·T1 antisymm)
+    [[nodiscard]] double tau(int a, int b, int i, int j) const;        // Stanton eq. (10): τ_{abij} = T2 + T1·T1 antisymm
+
 private:
     CcsdState& state_;
     const ParameterClass& p_;
 
     [[nodiscard]] double get_value(double a, double b, double c, double d) const;
-    [[nodiscard]] double taus(int a, int b, int i, int j) const;  // Stanton eq. (9)
-    [[nodiscard]] double tau(int a, int b, int i, int j) const;   // Stanton eq. (10)
+
+    // T2 amplitude term helpers (Stanton eq. 2)
+    [[nodiscard]] double t2_term_spinint(int a, int b, int i, int j) const;
+    [[nodiscard]] double t2_terms_F_ae(int a, int b, int i, int j) const;
+    [[nodiscard]] double t2_terms_F_mi(int a, int b, int i, int j) const;
+    [[nodiscard]] double t2_term_single_excitations(int a, int b, int i, int j) const;
+    [[nodiscard]] double t2_term_W_abef(int a, int b, int i, int j) const;
+    [[nodiscard]] double t2_term_single_dressing(int a, int b, int i, int j) const;
+    [[nodiscard]] double t2_terms_W_mbej(int a, int b, int i, int j) const;
+    [[nodiscard]] double t2_term_W_mnij(int a, int b, int i, int j) const;
+
+    // T1 amplitude term helpers (Stanton eq. 1)
+    [[nodiscard]] double t1_term_F_ae(int a, int i) const;
+    [[nodiscard]] double t1_term_F_mi(int a, int i) const;
+    [[nodiscard]] double t1_terms_doubles(int a, int i) const;
+    [[nodiscard]] double t1_term_spinint(int a, int i) const;
 };
 
 }  // namespace ccsd

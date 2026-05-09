@@ -64,3 +64,11 @@ ccsd_unit_test(test_parameters)
 ccsd_unit_test(test_timer)
 ccsd_unit_test(test_timing)
 ccsd_unit_test(test_math_helpers)
+
+# test_kernels needs WORKING_DIRECTORY for the HeH+ integration test (config.json lookup).
+add_executable(test_kernels test_kernels.cpp)
+target_link_libraries(test_kernels PRIVATE ccsd_core Catch2::Catch2WithMain)
+ccsd_apply_flags(test_kernels)
+catch_discover_tests(test_kernels
+    PROPERTIES LABELS "unit"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

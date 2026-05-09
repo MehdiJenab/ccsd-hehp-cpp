@@ -122,7 +122,7 @@ void ccsd::CcsdKernels::build_denominators() { // Make denominator arrays denom_
 //=============================================================================
 
 //=============================================================================
-double ccsd::CcsdKernels::taus(int a, int b, int i, int j) const { // Stanton eq (9)
+double ccsd::CcsdKernels::tau_tilde(int a, int b, int i, int j) const { // Stanton eq (9)
     return state_.t2(a,b,i,j) + 0.5*(state_.t1(a,i)*state_.t1(b,j) - state_.t1(b,i)*state_.t1(a,j));
 }
 //=============================================================================
@@ -144,7 +144,7 @@ void ccsd::CcsdKernels::compute_F_ae() { // Stanton eq (3)
                 for (int f = p_.n_occupied; f < state_.n_spin_orbitals; ++f) {
                     state_.F_ae(a,e) += state_.t1(f,m)*state_.spin_integrals(m,a,f,e);
                     for (int n = 0; n < p_.n_occupied; ++n) {
-                        state_.F_ae(a,e) += -0.5*taus(a,f,m,n)*state_.spin_integrals(m,n,e,f);
+                        state_.F_ae(a,e) += -0.5*tau_tilde(a,f,m,n)*state_.spin_integrals(m,n,e,f);
                     }
                 }
             }
@@ -164,7 +164,7 @@ void ccsd::CcsdKernels::compute_F_mi() { // Stanton eq (4)
                 for (int n = 0; n < p_.n_occupied; ++n) {
                     state_.F_mi(m,i) += state_.t1(e,n)*state_.spin_integrals(m,n,i,e);
                     for (int f = p_.n_occupied; f < state_.n_spin_orbitals; ++f) {
-                        state_.F_mi(m,i) += 0.5*taus(e,f,i,n)*state_.spin_integrals(m,n,e,f);
+                        state_.F_mi(m,i) += 0.5*tau_tilde(e,f,i,n)*state_.spin_integrals(m,n,e,f);
                     }
                 }
             }
@@ -260,87 +260,194 @@ void ccsd::CcsdKernels::compute_W_mbej() { // Stanton eq (8)
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t1_term_F_ae(int a, int i) const {
+    double acc = 0.0;
+    for (int e = p_.n_occupied; e < state_.n_spin_orbitals; ++e)
+        acc += state_.t1(e,i)*state_.F_ae(a,e);
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t1_term_F_mi(int a, int i) const {
+    double acc = 0.0;
+    for (int m = 0; m < p_.n_occupied; ++m)
+        acc += -state_.t1(a,m)*state_.F_mi(m,i);
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t1_terms_doubles(int a, int i) const {
+    double acc = 0.0;
+    const int n_occ = p_.n_occupied;
+    const int n_so  = state_.n_spin_orbitals;
+    for (int m = 0; m < n_occ; ++m) {
+        for (int e = n_occ; e < n_so; ++e) {
+            acc += state_.t2(a,e,i,m)*state_.F_me(m,e);                        // term 4
+            for (int f = n_occ; f < n_so; ++f)
+                acc += -0.5*state_.t2(e,f,i,m)*state_.spin_integrals(m,a,e,f); // term 5
+            for (int n = 0; n < n_occ; ++n)
+                acc += -0.5*state_.t2(a,e,m,n)*state_.spin_integrals(n,m,e,i); // term 6
+        }
+    }
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t1_term_spinint(int a, int i) const {
+    double acc = 0.0;
+    const int n_occ = p_.n_occupied;
+    const int n_so  = state_.n_spin_orbitals;
+    for (int n = 0; n < n_occ; ++n)
+        for (int f = n_occ; f < n_so; ++f)
+            acc += -state_.t1(f,n)*state_.spin_integrals(n,a,i,f);
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 void ccsd::CcsdKernels::compute_t1() { // Stanton eq (1)
     state_.t1_next.zeros();
-
+    const int n_occ = p_.n_occupied;
+    const int n_so  = state_.n_spin_orbitals;
     CCSD_OMP_PARALLEL_FOR
-    for (int a = p_.n_occupied; a < state_.n_spin_orbitals; ++a) {
-        for (int i = 0; i < p_.n_occupied; ++i) {
-            state_.t1_next(a,i) = state_.fock_spin(i,a);                          // Stanton eq. (1), term 1: Fock off-diagonal
-            for (int e = p_.n_occupied; e < state_.n_spin_orbitals; ++e) {
-                state_.t1_next(a,i) += state_.t1(e,i)*state_.F_ae(a,e);           // term 2: T1·F_ae
-            }
-            for (int m = 0; m < p_.n_occupied; ++m) {
-                state_.t1_next(a,i) += -state_.t1(a,m)*state_.F_mi(m,i);          // term 3: T1·F_mi
-                for (int e = p_.n_occupied; e < state_.n_spin_orbitals; ++e) {
-                    state_.t1_next(a,i) += state_.t2(a,e,i,m)*state_.F_me(m,e);   // term 4: T2·F_me
-                    for (int f = p_.n_occupied; f < state_.n_spin_orbitals; ++f) {
-                        state_.t1_next(a,i) += -0.5*state_.t2(e,f,i,m)*state_.spin_integrals(m,a,e,f);  // term 5: T2·<ma||ef>
-                    }
-                    for (int n = 0; n < p_.n_occupied; ++n) {
-                        state_.t1_next(a,i) += -0.5*state_.t2(a,e,m,n)*state_.spin_integrals(n,m,e,i);  // term 6: T2·<nm||ei>
-                    }
-                }
-            }
-            for (int n = 0; n < p_.n_occupied; ++n) {
-                for (int f = p_.n_occupied; f < state_.n_spin_orbitals; ++f) {
-                    state_.t1_next(a,i) += -state_.t1(f,n)*state_.spin_integrals(n,a,i,f);  // term 7: T1·<na||if>
-                }
-            }
-            state_.t1_next(a,i) = state_.t1_next(a,i)/state_.denom_ai(a,i);
+    for (int a = n_occ; a < n_so; ++a) {
+        for (int i = 0; i < n_occ; ++i) {
+            double acc = state_.fock_spin(i, a)      // Stanton eq. (1), term 1: Fock off-diagonal
+                       + t1_term_F_ae(a, i)           // term 2: T1·F_ae
+                       + t1_term_F_mi(a, i)           // term 3: T1·F_mi
+                       + t1_terms_doubles(a, i)       // terms 4–6: T2 dressed with F_me and spinints
+                       + t1_term_spinint(a, i);       // term 7: T1·<na||if>
+            state_.t1_next(a, i) = acc / state_.denom_ai(a, i);
         }
     }
 }
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t2_term_spinint(int a, int b, int i, int j) const {
+    return state_.spin_integrals(i, j, a, b);
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t2_terms_F_ae(int a, int b, int i, int j) const {
+    double acc = 0.0;
+    const int n_occ = p_.n_occupied;
+    const int n_so  = state_.n_spin_orbitals;
+    for (int e = n_occ; e < n_so; ++e) {
+        acc += state_.t2(a,e,i,j)*state_.F_ae(b,e)
+              -state_.t2(b,e,i,j)*state_.F_ae(a,e);
+        for (int m = 0; m < n_occ; ++m) {
+            acc += -0.5*state_.t2(a,e,i,j)*state_.t1(b,m)*state_.F_me(m,e)
+                   +0.5*state_.t2(b,e,i,j)*state_.t1(a,m)*state_.F_me(m,e);
+        }
+    }
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t2_terms_F_mi(int a, int b, int i, int j) const {
+    double acc = 0.0;
+    const int n_occ = p_.n_occupied;
+    const int n_so  = state_.n_spin_orbitals;
+    for (int m = 0; m < n_occ; ++m) {
+        acc += -state_.t2(a,b,i,m)*state_.F_mi(m,j)
+               +state_.t2(a,b,j,m)*state_.F_mi(m,i);
+        for (int e = n_occ; e < n_so; ++e) {
+            acc += -0.5*state_.t2(a,b,i,m)*state_.t1(e,j)*state_.F_me(m,e)
+                   +0.5*state_.t2(a,b,j,m)*state_.t1(e,i)*state_.F_me(m,e);
+        }
+    }
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t2_term_single_excitations(int a, int b, int i, int j) const {
+    double acc = 0.0;
+    const int n_occ = p_.n_occupied;
+    const int n_so  = state_.n_spin_orbitals;
+    for (int e = n_occ; e < n_so; ++e) {
+        acc += state_.t1(e,i)*state_.spin_integrals(a,b,e,j)
+              -state_.t1(e,j)*state_.spin_integrals(a,b,e,i);
+    }
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t2_term_W_abef(int a, int b, int i, int j) const {
+    double acc = 0.0;
+    const int n_occ = p_.n_occupied;
+    const int n_so  = state_.n_spin_orbitals;
+    for (int e = n_occ; e < n_so; ++e)
+        for (int f = n_occ; f < n_so; ++f)
+            acc += 0.5*tau(e,f,i,j)*state_.W_abef(a,b,e,f);
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t2_term_single_dressing(int a, int b, int i, int j) const {
+    double acc = 0.0;
+    for (int m = 0; m < p_.n_occupied; ++m) {
+        acc += -state_.t1(a,m)*state_.spin_integrals(m,b,i,j)
+               +state_.t1(b,m)*state_.spin_integrals(m,a,i,j);
+    }
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t2_terms_W_mbej(int a, int b, int i, int j) const {
+    double acc = 0.0;
+    const int n_occ = p_.n_occupied;
+    const int n_so  = state_.n_spin_orbitals;
+    for (int m = 0; m < n_occ; ++m) {
+        for (int e = n_occ; e < n_so; ++e) {
+            acc +=  state_.t2(a,e,i,m)*state_.W_mbej(m,b,e,j) - state_.t1(e,i)*state_.t1(a,m)*state_.spin_integrals(m,b,e,j);
+            acc += -state_.t2(a,e,j,m)*state_.W_mbej(m,b,e,i) + state_.t1(e,j)*state_.t1(a,m)*state_.spin_integrals(m,b,e,i);
+            acc += -state_.t2(b,e,i,m)*state_.W_mbej(m,a,e,j) + state_.t1(e,i)*state_.t1(b,m)*state_.spin_integrals(m,a,e,j);
+            acc +=  state_.t2(b,e,j,m)*state_.W_mbej(m,a,e,i) - state_.t1(e,j)*state_.t1(b,m)*state_.spin_integrals(m,a,e,i);
+        }
+    }
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+double ccsd::CcsdKernels::t2_term_W_mnij(int a, int b, int i, int j) const {
+    double acc = 0.0;
+    for (int m = 0; m < p_.n_occupied; ++m)
+        for (int n = 0; n < p_.n_occupied; ++n)
+            acc += 0.5*tau(a,b,m,n)*state_.W_mnij(m,n,i,j);
+    return acc;
+}
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 void ccsd::CcsdKernels::compute_t2() { // Stanton eq (2)
     state_.t2_next.zeros();
-
-    // Stanton eq. (2) — all terms accumulated into t2_next(a,b,i,j)
+    const int n_occ = p_.n_occupied;
+    const int n_so  = state_.n_spin_orbitals;
     CCSD_OMP_PARALLEL_FOR
-    for (int a = p_.n_occupied; a < state_.n_spin_orbitals; ++a) {
-        for (int b = p_.n_occupied; b < state_.n_spin_orbitals; ++b) {
-            for (int i = 0; i < p_.n_occupied; ++i) {
-                for (int j = 0; j < p_.n_occupied; ++j) {
-                    state_.t2_next(a,b,i,j) += state_.spin_integrals(i,j,a,b);            // term 1: <ij||ab>
-                    for (int e = p_.n_occupied; e < state_.n_spin_orbitals; ++e) {
-                        state_.t2_next(a,b,i,j) += state_.t2(a,e,i,j)*state_.F_ae(b,e)   // term 2a: T2·F_ae
-                                                   -state_.t2(b,e,i,j)*state_.F_ae(a,e);  // term 2b: antisymmetry
-                        for (int m = 0; m < p_.n_occupied; ++m) {
-                            state_.t2_next(a,b,i,j) += -0.5*state_.t2(a,e,i,j)*state_.t1(b,m)*state_.F_me(m,e)   // term 3a: T2·T1·F_me
-                                                       + 0.5*state_.t2(b,e,i,j)*state_.t1(a,m)*state_.F_me(m,e);  // term 3b: antisymmetry
-                        }
-                    }
-                    for (int m = 0; m < p_.n_occupied; ++m) {
-                        state_.t2_next(a,b,i,j) += -state_.t2(a,b,i,m)*state_.F_mi(m,j)  // term 4a: T2·F_mi
-                                                   + state_.t2(a,b,j,m)*state_.F_mi(m,i); // term 4b: antisymmetry
-                        for (int e = p_.n_occupied; e < state_.n_spin_orbitals; ++e) {
-                            state_.t2_next(a,b,i,j) += -0.5*state_.t2(a,b,i,m)*state_.t1(e,j)*state_.F_me(m,e)   // term 5a: T2·T1·F_me
-                                                       + 0.5*state_.t2(a,b,j,m)*state_.t1(e,i)*state_.F_me(m,e);  // term 5b: antisymmetry
-                        }
-                    }
-                    for (int e = p_.n_occupied; e < state_.n_spin_orbitals; ++e) {
-                        state_.t2_next(a,b,i,j) += state_.t1(e,i)*state_.spin_integrals(a,b,e,j)
-                                                   -state_.t1(e,j)*state_.spin_integrals(a,b,e,i);  // term 6: T1·<ab||ej>
-                        for (int f = p_.n_occupied; f < state_.n_spin_orbitals; ++f) {
-                            state_.t2_next(a,b,i,j) += 0.5*tau(e,f,i,j)*state_.W_abef(a,b,e,f);  // term 7: tau·W_abef
-                        }
-                    }
-                    for (int m = 0; m < p_.n_occupied; ++m) {
-                        state_.t2_next(a,b,i,j) += -state_.t1(a,m)*state_.spin_integrals(m,b,i,j)
-                                                   + state_.t1(b,m)*state_.spin_integrals(m,a,i,j);  // term 8: T1·<mb||ij>
-                        for (int e = p_.n_occupied; e < state_.n_spin_orbitals; ++e) {
-                            state_.t2_next(a,b,i,j) +=  state_.t2(a,e,i,m)*state_.W_mbej(m,b,e,j) - state_.t1(e,i)*state_.t1(a,m)*state_.spin_integrals(m,b,e,j);  // term 9a: T2·W_mbej
-                            state_.t2_next(a,b,i,j) += -state_.t2(a,e,j,m)*state_.W_mbej(m,b,e,i) + state_.t1(e,j)*state_.t1(a,m)*state_.spin_integrals(m,b,e,i);  // term 9b
-                            state_.t2_next(a,b,i,j) += -state_.t2(b,e,i,m)*state_.W_mbej(m,a,e,j) + state_.t1(e,i)*state_.t1(b,m)*state_.spin_integrals(m,a,e,j);  // term 9c
-                            state_.t2_next(a,b,i,j) +=  state_.t2(b,e,j,m)*state_.W_mbej(m,a,e,i) - state_.t1(e,j)*state_.t1(b,m)*state_.spin_integrals(m,a,e,i);  // term 9d
-                        }
-                        for (int n = 0; n < p_.n_occupied; ++n) {
-                            state_.t2_next(a,b,i,j) += 0.5*tau(a,b,m,n)*state_.W_mnij(m,n,i,j);  // term 10: tau·W_mnij
-                        }
-                    }
-                    state_.t2_next(a,b,i,j) /= state_.denom_abij(a,b,i,j);
+    for (int a = n_occ; a < n_so; ++a) {
+        for (int b = n_occ; b < n_so; ++b) {
+            for (int i = 0; i < n_occ; ++i) {
+                for (int j = 0; j < n_occ; ++j) {
+                    double acc = t2_term_spinint(a, b, i, j)
+                               + t2_terms_F_ae(a, b, i, j)
+                               + t2_terms_F_mi(a, b, i, j)
+                               + t2_term_single_excitations(a, b, i, j)
+                               + t2_term_W_abef(a, b, i, j)
+                               + t2_term_single_dressing(a, b, i, j)
+                               + t2_terms_W_mbej(a, b, i, j)
+                               + t2_term_W_mnij(a, b, i, j);
+                    state_.t2_next(a, b, i, j) = acc / state_.denom_abij(a, b, i, j);
                 }
             }
         }
