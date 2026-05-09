@@ -1,5 +1,4 @@
-#ifndef ParameterClass_Included
-#define ParameterClass_Included
+#pragma once
 
 #include <fstream>
 #include <map>
@@ -12,7 +11,7 @@
 class ParameterClass {
 public:
     int n_spatial_orbitals = 0;
-    int n_occupied = 0;
+    int n_occupied = 0;   // electron count = number of occupied spin orbitals
     std::vector<double> orbital_energies;
     double nuclear_repulsion = 0.0;
     double hf_energy = 0.0;
@@ -50,5 +49,3 @@ public:
             throw std::runtime_error("orbital_energies size mismatch");
     }
 };
-
-#endif  // ParameterClass_Included

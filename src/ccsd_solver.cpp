@@ -21,8 +21,8 @@
 using namespace std;  // acceptable in .cpp
 
 // Helpers for get_spinints(): 1-indexed spin-orbital → 0-indexed spatial MO, spin parity.
-static int spin_to_mo(int p)        { return (p + 1) / 2; }       // 1-indexed spin → 1-indexed spatial MO
-static bool same_spin(int p, int q) { return (p % 2) == (q % 2); }
+static int spin_to_mo(int p)        { return (p + 1) / 2; }       // 1-based spin-orbital index p → 1-based spatial MO index (used with get_value's 1-based API).
+static double same_spin(int p, int q) { return ((p % 2) == (q % 2)) ? 1.0 : 0.0; }
 static double kronecker(int a, int b){ return (a == b) ? 1.0 : 0.0; }
 
 //=============================================================================
@@ -482,9 +482,6 @@ void CcsdSolver::makeT2_d(){ // Stanton eq (2)
 	t2_next.zeros();
 
 	if (mpi.size>1){
-	// 	sendVec2D(F_ae,F_ae.rank,rank_master);
-	// 	sendVec2D(F_me,F_me.rank,rank_master);
-	// 	sendVec2D(F_mi,F_mi.rank,rank_master);
 		sendVec4D(W_abef,W_abef.rank,rank_master);
 		sendVec4D(W_mbej,W_mbej.rank,rank_master);
 		sendVec4D(W_mnij,W_mnij.rank,rank_master);
@@ -583,7 +580,7 @@ void CcsdSolver::run() {
 	}
 
 
-	while (cc_en_diff > ccsd::constants::convergence_threshold) { // convergence threshold = 10e-9
+	while (cc_en_diff > ccsd::constants::convergence_threshold) {
 		cc_en_pre = cc_en;
  		update_intermediates();
 		makeT1_s();

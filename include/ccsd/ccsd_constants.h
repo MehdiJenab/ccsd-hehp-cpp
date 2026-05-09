@@ -5,5 +5,5 @@ namespace ccsd::constants {
     constexpr int mpi_tag_2d = 233;
     constexpr int mpi_tag_4d = 610;
     // CCSD amplitude convergence criterion (energy difference threshold).
-    constexpr double convergence_threshold = 10e-9;
+    constexpr double convergence_threshold = 1.0e-8;  // 1e-8: conventional CCSD convergence
 }
