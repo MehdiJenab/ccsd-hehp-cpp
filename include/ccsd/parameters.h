@@ -1,22 +1,22 @@
 #ifndef ParameterClass_Included
 #define ParameterClass_Included
 
-#include <array>
 #include <fstream>
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
 class ParameterClass {
 public:
-    int dim = 0;
-    int Nelec = 0;
-    std::array<double, 2> orbital_energy{};
-    double ENUC = 0.0;
-    double EN = 0.0;
-    std::map<double, double> ttmo;
+    int n_spatial_orbitals = 0;
+    int n_occupied = 0;
+    std::vector<double> orbital_energies;
+    double nuclear_repulsion = 0.0;
+    double hf_energy = 0.0;
+    std::map<double, double> two_electron_mos;
 
     explicit ParameterClass(const std::string& path = "./config.json") {
         std::ifstream in(path);
@@ -24,21 +24,30 @@ public:
         nlohmann::json j;
         in >> j;
 
-        dim   = j.at("dim").get<int>();
-        Nelec = j.at("Nelec").get<int>();
+        n_spatial_orbitals = j.at("dim").get<int>();
+        n_occupied         = j.at("Nelec").get<int>();
 
         const auto& oe = j.at("orbital_energy");
-        if (oe.size() != 2) throw std::runtime_error("orbital_energy must have 2 entries");
-        orbital_energy[0] = oe[0].get<double>();
-        orbital_energy[1] = oe[1].get<double>();
+        orbital_energies.resize(oe.size());
+        for (std::size_t i = 0; i < oe.size(); ++i)
+            orbital_energies[i] = oe[i].get<double>();
 
-        ENUC = j.at("ENUC").get<double>();
-        EN   = j.at("EN").get<double>();
+        nuclear_repulsion = j.at("ENUC").get<double>();
+        hf_energy         = j.at("EN").get<double>();
 
         const auto& flat = j.at("ttmo");
         for (std::size_t i = 0; i + 1 < flat.size(); i += 2) {
-            ttmo.emplace(flat[i].get<double>(), flat[i + 1].get<double>());
+            two_electron_mos.emplace(flat[i].get<double>(), flat[i + 1].get<double>());
         }
+
+        validate();
+    }
+
+    void validate() const {
+        if (n_occupied > 2 * n_spatial_orbitals)
+            throw std::runtime_error("n_occupied exceeds 2 * n_spatial_orbitals");
+        if (static_cast<int>(orbital_energies.size()) != n_spatial_orbitals)
+            throw std::runtime_error("orbital_energies size mismatch");
     }
 };
 

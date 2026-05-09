@@ -24,13 +24,13 @@ TEST_CASE("ParameterClass parses a name-keyed config", "[parameters]") {
         out << kFixture;
     }
     ParameterClass p(path);
-    REQUIRE(p.dim == 2);
-    REQUIRE(p.Nelec == 2);
-    REQUIRE(p.orbital_energy[0] == -0.913);
-    REQUIRE(p.orbital_energy[1] ==  1.395);
-    REQUIRE(p.ENUC ==  1.300);
-    REQUIRE(p.EN   == -2.854);
-    REQUIRE(p.ttmo.at(0.5) == 0.31);
-    REQUIRE(p.ttmo.at(1.5) == 0.42);
+    REQUIRE(p.n_spatial_orbitals == 2);
+    REQUIRE(p.n_occupied == 2);
+    REQUIRE(p.orbital_energies[0] == -0.913);
+    REQUIRE(p.orbital_energies[1] ==  1.395);
+    REQUIRE(p.nuclear_repulsion ==  1.300);
+    REQUIRE(p.hf_energy   == -2.854);
+    REQUIRE(p.two_electron_mos.at(0.5) == 0.31);
+    REQUIRE(p.two_electron_mos.at(1.5) == 0.42);
     std::remove(path.c_str());
 }

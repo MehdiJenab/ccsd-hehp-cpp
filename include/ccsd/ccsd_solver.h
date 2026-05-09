@@ -11,9 +11,9 @@ public:
     MpiClass mpi;
     int rank_master = 0;
     int rank_start = 0;
-    Vector2D Fae, Fmi, Fme, Dai, tsnew, ts, fs;
-    Vector4D Wmnij, Wabef, Wmbej, Dabij, tdnew, td, spinints;
-    int dim2 = 0;
+    Vector2D F_ae, F_mi, F_me, denom_ai, t1_next, t1, fock_spin;
+    Vector4D W_mnij, W_abef, W_mbej, denom_abij, t2_next, t2, spin_integrals;
+    int n_spin_orbitals = 0;
 
     void run();
 

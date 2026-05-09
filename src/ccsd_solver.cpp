@@ -1,4 +1,5 @@
 #include <ccsd/ccsd_solver.h>
+#include <ccsd/ccsd_constants.h>
 #include <ccsd/mpi_tensor.h>
 #include <ccsd/timer.h>
 
@@ -19,13 +20,18 @@
 
 using namespace std;  // acceptable in .cpp
 
+// Helpers for get_spinints(): 1-indexed spin-orbital → 0-indexed spatial MO, spin parity.
+static int spin_to_mo(int p)        { return (p + 1) / 2; }       // 1-indexed spin → 1-indexed spatial MO
+static bool same_spin(int p, int q) { return (p % 2) == (q % 2); }
+static double kronecker(int a, int b){ return (a == b) ? 1.0 : 0.0; }
+
 //=============================================================================
 void CcsdSolver::guess_T2(){
-	for (int a = p.Nelec; a < dim2; ++a){
-		for (int b = p.Nelec; b < dim2; ++b){
-			for (int i = 0; i < p.Nelec; ++i){
-				for (int j = 0; j < p.Nelec; ++j){
-					td(a,b,i,j) += spinints(i,j,a,b)/(fs(i,i) + fs(j,j) - fs(a,a) - fs(b,b));
+	for (int a = p.n_occupied; a < n_spin_orbitals; ++a){
+		for (int b = p.n_occupied; b < n_spin_orbitals; ++b){
+			for (int i = 0; i < p.n_occupied; ++i){
+				for (int j = 0; j < p.n_occupied; ++j){
+					t2(a,b,i,j) += spin_integrals(i,j,a,b)/(fock_spin(i,i) + fock_spin(j,j) - fock_spin(a,a) - fock_spin(b,b));
 				}
 			}
 		}
@@ -34,20 +40,20 @@ void CcsdSolver::guess_T2(){
 //=============================================================================
 
 //=============================================================================
-void CcsdSolver::get_denominator_arrays(){ // Make denominator arrays Dai, Dabij, Equation (12) of Stanton
+void CcsdSolver::get_denominator_arrays(){ // Make denominator arrays denom_ai, denom_abij, Equation (12) of Stanton
 
-	Dai.zeros();
-	for (int a = p.Nelec; a < dim2; ++a) {
-		for (int i = 0; i < p.Nelec; ++i){
-			Dai(a,i) = fs(i,i) - fs(a,a);
+	denom_ai.zeros();
+	for (int a = p.n_occupied; a < n_spin_orbitals; ++a) {
+		for (int i = 0; i < p.n_occupied; ++i){
+			denom_ai(a,i) = fock_spin(i,i) - fock_spin(a,a);
 		}
 	}
-	Dabij.zeros();
-	for (int a = p.Nelec; a < dim2; ++a) {
-		for (int b = p.Nelec; b < dim2; ++b){
-			for (int i = 0; i < p.Nelec; ++i){
-				for (int j = 0; j < p.Nelec; ++j){
-					Dabij(a,b,i,j) = fs(i,i) + fs(j,j) - fs(a,a) - fs(b,b);
+	denom_abij.zeros();
+	for (int a = p.n_occupied; a < n_spin_orbitals; ++a) {
+		for (int b = p.n_occupied; b < n_spin_orbitals; ++b){
+			for (int i = 0; i < p.n_occupied; ++i){
+				for (int j = 0; j < p.n_occupied; ++j){
+					denom_abij(a,b,i,j) = fock_spin(i,i) + fock_spin(j,j) - fock_spin(a,a) - fock_spin(b,b);
 				}
 			}
 		}
@@ -83,10 +89,10 @@ double CcsdSolver::get_value(double a, double b, double c, double d) const { // 
 	// Example: (12\vert 34) = tei(1,2,3,4)
 	double value;
 	double key = get_key(a,b,c,d);
-	if ( p.ttmo.find(key) == p.ttmo.end() ) {
+	if ( p.two_electron_mos.find(key) == p.two_electron_mos.end() ) {
 		value=0.0e0;
 	} else {
-		value = p.ttmo.find(key)->second;
+		value = p.two_electron_mos.find(key)->second;
 	}
 	return  value;
 }
@@ -94,16 +100,20 @@ double CcsdSolver::get_value(double a, double b, double c, double d) const { // 
 
 //-----------------------------------------------------------------------------
 void CcsdSolver::get_spinints(){ // CONVERT SPATIAL TO SPIN ORBITAL MO,
-	//This makes the spin basis double bar integral (physicists' notation)
-	spinints.zeros();
-	double value1,value2;
-	for (int pp = 1; pp < dim2 + 1; ++pp) {
-		for (int qq = 1; qq < dim2 + 1; ++qq) {
-			for (int rr = 1; rr < dim2 + 1; ++rr) {
-				for (int ss = 1; ss < dim2 + 1; ++ss) {
-					value1 = get_value( static_cast<double>((pp+1)>>1), static_cast<double>((rr+1)>>1), static_cast<double>((qq+1)>>1), static_cast<double>((ss+1)>>1) ) * (pp%2 == rr%2) * (qq%2 == ss%2);
-					value2 = get_value( static_cast<double>((pp+1)>>1), static_cast<double>((ss+1)>>1), static_cast<double>((qq+1)>>1), static_cast<double>((rr+1)>>1) ) * (pp%2 == ss%2) * (qq%2 == rr%2);
-					spinints(pp-1, qq-1, rr-1, ss-1) = value1 - value2;
+	// Build the spin-orbital two-electron integrals <pq||rs> = <pq|rs> - <pq|sr>
+	// Indices pp,qq,rr,ss are 1-based spin orbitals; spin_to_mo converts to spatial MOs.
+	spin_integrals.zeros();
+	for (int pp = 1; pp <= n_spin_orbitals; ++pp) {
+		for (int qq = 1; qq <= n_spin_orbitals; ++qq) {
+			for (int rr = 1; rr <= n_spin_orbitals; ++rr) {
+				for (int ss = 1; ss <= n_spin_orbitals; ++ss) {
+					double direct   = get_value(spin_to_mo(pp), spin_to_mo(rr),
+					                            spin_to_mo(qq), spin_to_mo(ss))
+					                * same_spin(pp,rr) * same_spin(qq,ss);
+					double exchange = get_value(spin_to_mo(pp), spin_to_mo(ss),
+					                            spin_to_mo(qq), spin_to_mo(rr))
+					                * same_spin(pp,ss) * same_spin(qq,rr);
+					spin_integrals(pp-1, qq-1, rr-1, ss-1) = direct - exchange;
 				}
 			}
 		}
@@ -114,15 +124,15 @@ void CcsdSolver::get_spinints(){ // CONVERT SPATIAL TO SPIN ORBITAL MO,
 
 //=============================================================================
 void CcsdSolver::get_fs(){//Spin basis fock matrix eigenvalues, put MO energies in diagonal array
-	vector<double> fs_1D;
-	fs_1D.resize(static_cast<std::size_t>(dim2));
-	fill(fs_1D.begin(), fs_1D.end(), 0.0);
+	vector<double> fock_1D;
+	fock_1D.resize(static_cast<std::size_t>(n_spin_orbitals));
+	fill(fock_1D.begin(), fock_1D.end(), 0.0);
 
-	for (std::size_t i = 0; i < fs_1D.size(); ++i){
-		fs_1D[i] = p.orbital_energy[i / 2];
+	for (std::size_t i = 0; i < fock_1D.size(); ++i){
+		fock_1D[i] = p.orbital_energies[i / 2];
 	}
 
-	fs.diagonalize(fs_1D);
+	fock_spin.diagonalize(fock_1D);
 
 }
 //=============================================================================
@@ -142,37 +152,37 @@ int CcsdSolver::update(int i){
 void CcsdSolver::get_ranks(){
 	rank_master = 0;
 	int i=rank_start;
-	Fae.rank = i;
+	F_ae.rank = i;
 	i = update(i);
-	Fme.rank = i;
+	F_me.rank = i;
 	i = update(i);
-	Fmi.rank = i;
+	F_mi.rank = i;
 	i = update(i);
-	Wmbej.rank = i;
+	W_mbej.rank = i;
 	i = update(i);
-	Wmnij.rank = i;
+	W_mnij.rank = i;
 	i = update(i);
-	Wabef.rank = i;
+	W_abef.rank = i;
 }
 //=============================================================================
 
 //-----------------------------------------------------------------------------
 void CcsdSolver::initialization_vectors(){
-	Fae.initialization(dim2);
-	Fmi.initialization(dim2);
-	Fme.initialization(dim2);
-	Dai.initialization(dim2);
-	tsnew.initialization(dim2);
-	ts.initialization(dim2);
-	fs.initialization(dim2);
+	F_ae.initialization(n_spin_orbitals);
+	F_mi.initialization(n_spin_orbitals);
+	F_me.initialization(n_spin_orbitals);
+	denom_ai.initialization(n_spin_orbitals);
+	t1_next.initialization(n_spin_orbitals);
+	t1.initialization(n_spin_orbitals);
+	fock_spin.initialization(n_spin_orbitals);
 
-	Wmnij.initialization(dim2);
-	Wabef.initialization(dim2);
-	Wmbej.initialization(dim2);
-	Dabij.initialization(dim2);
-	tdnew.initialization(dim2);
-	td.initialization(dim2);
-	spinints.initialization(dim2);;
+	W_mnij.initialization(n_spin_orbitals);
+	W_abef.initialization(n_spin_orbitals);
+	W_mbej.initialization(n_spin_orbitals);
+	denom_abij.initialization(n_spin_orbitals);
+	t2_next.initialization(n_spin_orbitals);
+	t2.initialization(n_spin_orbitals);
+	spin_integrals.initialization(n_spin_orbitals);;
 }
 //-----------------------------------------------------------------------------
 
@@ -183,7 +193,7 @@ void CcsdSolver::initialization(){
  	if (mpi.rank==rank_master)	ccsd::Timer timer("initialization",mpi.rank);
 	#endif
 
-	dim2= 2*p.dim;
+	n_spin_orbitals = 2 * p.n_spatial_orbitals;
 
 	// mpi starts ...
 
@@ -216,7 +226,7 @@ void CcsdSolver::initialization(){
 
 //=============================================================================
 double CcsdSolver::get_taus(int a, int b, int i, int j) const {// Stanton eq (9)
-	double taus = td(a,b,i,j) + 0.5*(ts(a,i)*ts(b,j) - ts(b,i)*ts(a,j));
+	double taus = t2(a,b,i,j) + 0.5*(t1(a,i)*t1(b,j) - t1(b,i)*t1(a,j));
 	return taus;
 }
 //=============================================================================
@@ -224,7 +234,7 @@ double CcsdSolver::get_taus(int a, int b, int i, int j) const {// Stanton eq (9)
 
 //=============================================================================
 double CcsdSolver::get_tau(int a, int b, int i, int j) const { // Stanton eq (10)
-	double tau=td(a,b,i,j) + ts(a,i)*ts(b,j) - ts(b,i)*ts(a,j);
+	double tau=t2(a,b,i,j) + t1(a,i)*t1(b,j) - t1(b,i)*t1(a,j);
 	return tau;
 }
 //=============================================================================
@@ -232,16 +242,16 @@ double CcsdSolver::get_tau(int a, int b, int i, int j) const { // Stanton eq (10
 
 //=============================================================================
 void CcsdSolver::get_Fae(){ // Stanton eq (3)
-	Fae.zeros();
-	for (int a = p.Nelec; a < dim2; ++a) {
-		for (int e = p.Nelec; e < dim2; ++e){
-			Fae(a,e) = (1 - (a == e))*fs(a,e);
-			for (int m = 0; m < p.Nelec; ++m){
-				Fae(a,e) += -0.5*fs(m,e)*ts(a,m);
-				for (int f = p.Nelec; f < dim2; ++f){
-					Fae(a,e) += ts(f,m)*spinints(m,a,f,e);
-					for (int n = 0; n < p.Nelec; ++n){
-						Fae(a,e) += -0.5*get_taus(a,f,m,n)*spinints(m,n,e,f);
+	F_ae.zeros();
+	for (int a = p.n_occupied; a < n_spin_orbitals; ++a) {
+		for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+			F_ae(a,e) = (1.0 - kronecker(a,e)) * fock_spin(a,e);
+			for (int m = 0; m < p.n_occupied; ++m){
+				F_ae(a,e) += -0.5*fock_spin(m,e)*t1(a,m);
+				for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+					F_ae(a,e) += t1(f,m)*spin_integrals(m,a,f,e);
+					for (int n = 0; n < p.n_occupied; ++n){
+						F_ae(a,e) += -0.5*get_taus(a,f,m,n)*spin_integrals(m,n,e,f);
 					}
 				}
 			}
@@ -253,16 +263,16 @@ void CcsdSolver::get_Fae(){ // Stanton eq (3)
 
 //-----------------------------------------------------------------------------
 void CcsdSolver::get_Fmi(){ // Stanton eq (4)
-	Fmi.zeros();
-	for (int m = 0; m < p.Nelec; ++m) {
-		for (int i = 0; i < p.Nelec; ++i) {
-			Fmi(m,i) = (1 - (m == i))*fs(m,i);
-			for (int e = p.Nelec; e < dim2; ++e){
-				Fmi(m,i) += 0.5*ts(e,i)*fs(m,e);
-				for (int n = 0; n < p.Nelec; ++n){
-					Fmi(m,i) += ts(e,n)*spinints(m,n,i,e);
-					for (int f = p.Nelec; f < dim2; ++f){
-						Fmi(m,i) += 0.5*get_taus(e,f,i,n)*spinints(m,n,e,f);
+	F_mi.zeros();
+	for (int m = 0; m < p.n_occupied; ++m) {
+		for (int i = 0; i < p.n_occupied; ++i) {
+			F_mi(m,i) = (1.0 - kronecker(m,i)) * fock_spin(m,i);
+			for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+				F_mi(m,i) += 0.5*t1(e,i)*fock_spin(m,e);
+				for (int n = 0; n < p.n_occupied; ++n){
+					F_mi(m,i) += t1(e,n)*spin_integrals(m,n,i,e);
+					for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+						F_mi(m,i) += 0.5*get_taus(e,f,i,n)*spin_integrals(m,n,e,f);
 					}
 				}
 			}
@@ -274,13 +284,13 @@ void CcsdSolver::get_Fmi(){ // Stanton eq (4)
 
 //-----------------------------------------------------------------------------
 void CcsdSolver::get_Fme(){  // Stanton eq (5)
-	Fme.zeros();
-	for (int m = 0; m < p.Nelec; ++m){
-		for (int e = p.Nelec; e < dim2; ++e){
-			Fme(m,e) = fs(m,e);
-			for (int n = 0; n < p.Nelec; ++n){
-				for (int f = p.Nelec; f < dim2; ++f){
-					Fme(m,e) += ts(f,n)*spinints(m,n,e,f);
+	F_me.zeros();
+	for (int m = 0; m < p.n_occupied; ++m){
+		for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+			F_me(m,e) = fock_spin(m,e);
+			for (int n = 0; n < p.n_occupied; ++n){
+				for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+					F_me(m,e) += t1(f,n)*spin_integrals(m,n,e,f);
 				}
 			}
 		}
@@ -291,17 +301,17 @@ void CcsdSolver::get_Fme(){  // Stanton eq (5)
 
 //-----------------------------------------------------------------------------
 void CcsdSolver::get_Wmnij(){// Stanton eq (6)
-	Wmnij.zeros();
-	for (int m = 0; m < p.Nelec; ++m){
-		for (int n = 0; n < p.Nelec; ++n){
-			for (int i = 0; i < p.Nelec; ++i){
-				for (int j = 0; j < p.Nelec; ++j){
-					Wmnij(m,n,i,j) = spinints(m,n,i,j);
-					for (int e = p.Nelec; e < dim2; ++e){
-						Wmnij(m,n,i,j) +=  ts(e,j)*spinints(m,n,i,e)
-											-ts(e,i)*spinints(m,n,j,e);
-						for (int f = p.Nelec; f < dim2; ++f){
-							Wmnij(m,n,i,j) += 0.25*get_tau(e,f,i,j)*spinints(m,n,e,f);
+	W_mnij.zeros();
+	for (int m = 0; m < p.n_occupied; ++m){
+		for (int n = 0; n < p.n_occupied; ++n){
+			for (int i = 0; i < p.n_occupied; ++i){
+				for (int j = 0; j < p.n_occupied; ++j){
+					W_mnij(m,n,i,j) = spin_integrals(m,n,i,j);
+					for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+						W_mnij(m,n,i,j) +=  t1(e,j)*spin_integrals(m,n,i,e)
+											-t1(e,i)*spin_integrals(m,n,j,e);
+						for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+							W_mnij(m,n,i,j) += 0.25*get_tau(e,f,i,j)*spin_integrals(m,n,e,f);
 						}
 					}
 				}
@@ -313,17 +323,17 @@ void CcsdSolver::get_Wmnij(){// Stanton eq (6)
 
 //-----------------------------------------------------------------------------
 void CcsdSolver::get_Wabef(){ // Stanton eq (7)
-	Wabef.zeros();
-	for (int a = p.Nelec; a < dim2; ++a){
-		for (int b = p.Nelec; b < dim2; ++b){
-			for (int e = p.Nelec; e < dim2; ++e){
-				for (int f = p.Nelec; f < dim2; ++f){
-					Wabef(a,b,e,f) = spinints(a,b,e,f);
-					for (int m = 0; m < p.Nelec; ++m){
-						Wabef(a,b,e,f) += -ts(b,m)*spinints(a,m,e,f)
-											+ts(a,m)*spinints(b,m,e,f);
-						for (int n = 0; n < p.Nelec; ++n){
-							Wabef(a,b,e,f) += 0.25*get_tau(a,b,m,n)*spinints(m,n,e,f);
+	W_abef.zeros();
+	for (int a = p.n_occupied; a < n_spin_orbitals; ++a){
+		for (int b = p.n_occupied; b < n_spin_orbitals; ++b){
+			for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+				for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+					W_abef(a,b,e,f) = spin_integrals(a,b,e,f);
+					for (int m = 0; m < p.n_occupied; ++m){
+						W_abef(a,b,e,f) += -t1(b,m)*spin_integrals(a,m,e,f)
+											+t1(a,m)*spin_integrals(b,m,e,f);
+						for (int n = 0; n < p.n_occupied; ++n){
+							W_abef(a,b,e,f) += 0.25*get_tau(a,b,m,n)*spin_integrals(m,n,e,f);
 						}
 					}
 				}
@@ -336,20 +346,20 @@ void CcsdSolver::get_Wabef(){ // Stanton eq (7)
 
 //-----------------------------------------------------------------------------
 void CcsdSolver::get_Wmbej(){ // Stanton eq (8)
-	Wmbej.zeros();
+	W_mbej.zeros();
 	CCSD_OMP_PARALLEL_FOR
-	for (int m = 0; m < p.Nelec; ++m){
-		for (int b = p.Nelec; b < dim2; ++b){
-			for (int e = p.Nelec; e < dim2; ++e){
-				for (int j = 0; j < p.Nelec; ++j){
-					Wmbej(m,b,e,j) = spinints(m,b,e,j);
-					for (int f = p.Nelec; f < dim2; ++f){
-						Wmbej(m,b,e,j) += ts(f,j)*spinints(m,b,e,f);
+	for (int m = 0; m < p.n_occupied; ++m){
+		for (int b = p.n_occupied; b < n_spin_orbitals; ++b){
+			for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+				for (int j = 0; j < p.n_occupied; ++j){
+					W_mbej(m,b,e,j) = spin_integrals(m,b,e,j);
+					for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+						W_mbej(m,b,e,j) += t1(f,j)*spin_integrals(m,b,e,f);
 					}
-					for (int n = 0; n < p.Nelec; ++n){
-						Wmbej(m,b,e,j) += -ts(b,n)*spinints(m,n,e,j);
-						for (int f = p.Nelec; f < dim2; ++f){
-							Wmbej(m,b,e,j) += -(0.5*td(f,b,j,n) + ts(f,j)*ts(b,n))*spinints(m,n,e,f);
+					for (int n = 0; n < p.n_occupied; ++n){
+						W_mbej(m,b,e,j) += -t1(b,n)*spin_integrals(m,n,e,j);
+						for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+							W_mbej(m,b,e,j) += -(0.5*t2(f,b,j,n) + t1(f,j)*t1(b,n))*spin_integrals(m,n,e,f);
 						}
 					}
 				}
@@ -364,18 +374,18 @@ void CcsdSolver::get_Wmbej(){ // Stanton eq (8)
 void CcsdSolver::update_intermediates(){
 	// We need to update our intermediates at the beginning, and
 	// at the end of each iteration. Each iteration provides a new
-	// guess at the amplitudes T1 (ts) and T2 (td), that *hopefully*
+	// guess at the amplitudes T1 (t1) and T2 (t2), that *hopefully*
 	// converges to a stable, ground-state, solution.
 	#ifdef timing
 	if (mpi.rank==rank_master)	ccsd::Timer timer("update_intermediates",mpi.rank);
 	#endif
 
-	if (mpi.rank==Fae.rank){get_Fae();}
-	if (mpi.rank==Fmi.rank){get_Fmi();}
-	if (mpi.rank==Fme.rank){get_Fme();}
-	if (mpi.rank==Wmnij.rank){get_Wmnij();}
-	if (mpi.rank==Wabef.rank){get_Wabef();}
-	if (mpi.rank==Wmbej.rank){get_Wmbej();}
+	if (mpi.rank==F_ae.rank){get_Fae();}
+	if (mpi.rank==F_mi.rank){get_Fmi();}
+	if (mpi.rank==F_me.rank){get_Fme();}
+	if (mpi.rank==W_mnij.rank){get_Wmnij();}
+	if (mpi.rank==W_abef.rank){get_Wabef();}
+	if (mpi.rank==W_mbej.rank){get_Wmbej();}
 }
 //=============================================================================
 
@@ -387,10 +397,10 @@ void CcsdSolver::update_intermediates(){
 
 // P13 collective-ops audit (pass-2):
 // All sendVec2D / sendVec4D callsites in makeT1_s / makeT2_d are directed sends from a
-// per-tensor compute rank (Fae.rank, Fme.rank, Fmi.rank, Wabef.rank, Wmbej.rank, Wmnij.rank)
+// per-tensor compute rank (F_ae.rank, F_me.rank, F_mi.rank, W_abef.rank, W_mbej.rank, W_mnij.rank)
 // to rank_master, which is the sole consumer inside the master-only loop nests below.
 // The dataflow is scatter-compute -> gather-on-master -> broadcast-result: the resulting
-// tsnew/tdnew are subsequently MPI_Bcast to all ranks in run(). Replacing the directed
+// t1_next/t2_next are subsequently MPI_Bcast to all ranks in run(). Replacing the directed
 // send with MPI_Bcast here would unnecessarily fan out per-tensor intermediates to every
 // rank even though only rank_master uses them. Audit conclusion: keep point-to-point.
 
@@ -423,40 +433,40 @@ void CcsdSolver::makeT1_s(){ // Stanton eq (1)
 	#ifdef timing
 	if (mpi.rank==rank_master)	ccsd::Timer timer("makeT1_s",mpi.rank);
 	#endif
-	tsnew.zeros();
+	t1_next.zeros();
 
 	if (mpi.size>1){
-		sendVec2D(Fae,Fae.rank,rank_master);
-		sendVec2D(Fme,Fme.rank,rank_master);
-		sendVec2D(Fmi,Fmi.rank,rank_master);
+		sendVec2D(F_ae,F_ae.rank,rank_master);
+		sendVec2D(F_me,F_me.rank,rank_master);
+		sendVec2D(F_mi,F_mi.rank,rank_master);
 	}
 
 	if (mpi.rank==rank_master){
 	CCSD_OMP_PARALLEL_FOR
-	for (int a = p.Nelec; a < dim2; ++a){
-		for (int i = 0; i < p.Nelec; ++i){
-			tsnew(a,i) = fs(i,a);
-			for (int e = p.Nelec; e < dim2; ++e){
-				tsnew(a,i) += ts(e,i)*Fae(a,e);
+	for (int a = p.n_occupied; a < n_spin_orbitals; ++a){
+		for (int i = 0; i < p.n_occupied; ++i){
+			t1_next(a,i) = fock_spin(i,a);                          // Stanton eq. (1), term 1: Fock off-diagonal
+			for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+				t1_next(a,i) += t1(e,i)*F_ae(a,e);                  // term 2: T1·F_ae
 			}
-			for (int m = 0; m < p.Nelec; ++m){
-				tsnew(a,i) += -ts(a,m)* Fmi(m,i);
-				for (int e = p.Nelec; e < dim2; ++e){
-					tsnew(a,i) += td(a,e,i,m)* Fme(m,e);
-					for (int f = p.Nelec; f < dim2; ++f){
-						tsnew(a,i) += -0.5*td(e,f,i,m)*spinints(m,a,e,f);
+			for (int m = 0; m < p.n_occupied; ++m){
+				t1_next(a,i) += -t1(a,m)* F_mi(m,i);               // term 3: T1·F_mi
+				for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+					t1_next(a,i) += t2(a,e,i,m)* F_me(m,e);        // term 4: T2·F_me
+					for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+						t1_next(a,i) += -0.5*t2(e,f,i,m)*spin_integrals(m,a,e,f);  // term 5: T2·<ma||ef>
 					}
-					for (int n = 0; n < p.Nelec; ++n){
-						tsnew(a,i) += -0.5*td(a,e,m,n)*spinints(n,m,e,i);
+					for (int n = 0; n < p.n_occupied; ++n){
+						t1_next(a,i) += -0.5*t2(a,e,m,n)*spin_integrals(n,m,e,i);  // term 6: T2·<nm||ei>
 					}
 				}
 			}
-			for (int n = 0; n < p.Nelec; ++n){
-				for (int f = p.Nelec; f < dim2; ++f){
-					tsnew(a,i) += -ts(f,n)*spinints(n,a,i,f);
+			for (int n = 0; n < p.n_occupied; ++n){
+				for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+					t1_next(a,i) += -t1(f,n)*spin_integrals(n,a,i,f);  // term 7: T1·<na||if>
 				}
 			}
-			tsnew(a,i) = tsnew(a,i)/Dai(a,i);
+			t1_next(a,i) = t1_next(a,i)/denom_ai(a,i);
 		}
 	}
 	}
@@ -469,60 +479,61 @@ void CcsdSolver::makeT2_d(){ // Stanton eq (2)
 	#ifdef timing
 	if (mpi.rank==rank_master)	ccsd::Timer timer("makeT2_d",mpi.rank);
 	#endif
-	tdnew.zeros();
+	t2_next.zeros();
 
 	if (mpi.size>1){
-	// 	sendVec2D(Fae,Fae.rank,rank_master);
-	// 	sendVec2D(Fme,Fme.rank,rank_master);
-	// 	sendVec2D(Fmi,Fmi.rank,rank_master);
-		sendVec4D(Wabef,Wabef.rank,rank_master);
-		sendVec4D(Wmbej,Wmbej.rank,rank_master);
-		sendVec4D(Wmnij,Wmnij.rank,rank_master);
+	// 	sendVec2D(F_ae,F_ae.rank,rank_master);
+	// 	sendVec2D(F_me,F_me.rank,rank_master);
+	// 	sendVec2D(F_mi,F_mi.rank,rank_master);
+		sendVec4D(W_abef,W_abef.rank,rank_master);
+		sendVec4D(W_mbej,W_mbej.rank,rank_master);
+		sendVec4D(W_mnij,W_mnij.rank,rank_master);
 	}
 
 
 	if (mpi.rank==rank_master){
+		// Stanton eq. (2) — all terms accumulated into t2_next(a,b,i,j)
 		CCSD_OMP_PARALLEL_FOR
-		for (int a = p.Nelec; a < dim2; ++a){
-			for (int b = p.Nelec; b < dim2; ++b){
-				for (int i = 0; i < p.Nelec; ++i){
-					for (int j = 0; j < p.Nelec; ++j){
-						tdnew(a,b,i,j) += spinints(i,j,a,b);
-						for (int e = p.Nelec; e < dim2; ++e){
-							tdnew(a,b,i,j) += td(a,e,i,j)*Fae(b,e)
-												-td(b,e,i,j)*Fae(a,e);
-							for (int m = 0; m < p.Nelec; ++m){
-								tdnew(a,b,i,j) += -0.5*td(a,e,i,j)*ts(b,m)* Fme(m,e)
-													+ 0.5*td(b,e,i,j)*ts(a,m)* Fme(m,e);
+		for (int a = p.n_occupied; a < n_spin_orbitals; ++a){
+			for (int b = p.n_occupied; b < n_spin_orbitals; ++b){
+				for (int i = 0; i < p.n_occupied; ++i){
+					for (int j = 0; j < p.n_occupied; ++j){
+						t2_next(a,b,i,j) += spin_integrals(i,j,a,b);            // term 1: <ij||ab>
+						for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+							t2_next(a,b,i,j) += t2(a,e,i,j)*F_ae(b,e)           // term 2a: T2·F_ae
+												-t2(b,e,i,j)*F_ae(a,e);         // term 2b: antisymmetry
+							for (int m = 0; m < p.n_occupied; ++m){
+								t2_next(a,b,i,j) += -0.5*t2(a,e,i,j)*t1(b,m)* F_me(m,e)   // term 3a: T2·T1·F_me
+													+ 0.5*t2(b,e,i,j)*t1(a,m)* F_me(m,e);  // term 3b: antisymmetry
 							}
 						}
-						for (int m = 0; m < p.Nelec; ++m){
-							tdnew(a,b,i,j) += -td(a,b,i,m)* Fmi(m,j)
-												+ td(a,b,j,m)* Fmi(m,i);
-							for (int e = p.Nelec; e < dim2; ++e){
-								tdnew(a,b,i,j) += -0.5*td(a,b,i,m)*ts(e,j)* Fme(m,e)
-													+ 0.5*td(a,b,j,m)*ts(e,i)* Fme(m,e);
+						for (int m = 0; m < p.n_occupied; ++m){
+							t2_next(a,b,i,j) += -t2(a,b,i,m)* F_mi(m,j)        // term 4a: T2·F_mi
+												+ t2(a,b,j,m)* F_mi(m,i);      // term 4b: antisymmetry
+							for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+								t2_next(a,b,i,j) += -0.5*t2(a,b,i,m)*t1(e,j)* F_me(m,e)   // term 5a: T2·T1·F_me
+													+ 0.5*t2(a,b,j,m)*t1(e,i)* F_me(m,e);  // term 5b: antisymmetry
 							}
 						}
-						for (int e = p.Nelec; e < dim2; ++e){
-							tdnew(a,b,i,j) += ts(e,i)*spinints(a,b,e,j) - ts(e,j)*spinints(a,b,e,i);
-							for (int f = p.Nelec; f < dim2; ++f){
-								tdnew(a,b,i,j) += 0.5*get_tau(e,f,i,j)*Wabef(a,b,e,f);
+						for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+							t2_next(a,b,i,j) += t1(e,i)*spin_integrals(a,b,e,j) - t1(e,j)*spin_integrals(a,b,e,i);  // term 6: T1·<ab||ej>
+							for (int f = p.n_occupied; f < n_spin_orbitals; ++f){
+								t2_next(a,b,i,j) += 0.5*get_tau(e,f,i,j)*W_abef(a,b,e,f);  // term 7: tau·W_abef
 							}
 						}
-						for (int m = 0; m < p.Nelec; ++m){
-							tdnew(a,b,i,j) += -ts(a,m)*spinints(m,b,i,j) + ts(b,m)*spinints(m,a,i,j);
-							for (int e = p.Nelec; e < dim2; ++e){
-								tdnew(a,b,i,j) +=  td(a,e,i,m)*Wmbej(m,b,e,j) - ts(e,i)*ts(a,m)*spinints(m,b,e,j);
-								tdnew(a,b,i,j) += -td(a,e,j,m)*Wmbej(m,b,e,i) + ts(e,j)*ts(a,m)*spinints(m,b,e,i);
-								tdnew(a,b,i,j) += -td(b,e,i,m)*Wmbej(m,a,e,j) + ts(e,i)*ts(b,m)*spinints(m,a,e,j);
-								tdnew(a,b,i,j) +=  td(b,e,j,m)*Wmbej(m,a,e,i) - ts(e,j)*ts(b,m)*spinints(m,a,e,i);
+						for (int m = 0; m < p.n_occupied; ++m){
+							t2_next(a,b,i,j) += -t1(a,m)*spin_integrals(m,b,i,j) + t1(b,m)*spin_integrals(m,a,i,j);  // term 8: T1·<mb||ij>
+							for (int e = p.n_occupied; e < n_spin_orbitals; ++e){
+								t2_next(a,b,i,j) +=  t2(a,e,i,m)*W_mbej(m,b,e,j) - t1(e,i)*t1(a,m)*spin_integrals(m,b,e,j);  // term 9a: T2·W_mbej
+								t2_next(a,b,i,j) += -t2(a,e,j,m)*W_mbej(m,b,e,i) + t1(e,j)*t1(a,m)*spin_integrals(m,b,e,i);  // term 9b
+								t2_next(a,b,i,j) += -t2(b,e,i,m)*W_mbej(m,a,e,j) + t1(e,i)*t1(b,m)*spin_integrals(m,a,e,j);  // term 9c
+								t2_next(a,b,i,j) +=  t2(b,e,j,m)*W_mbej(m,a,e,i) - t1(e,j)*t1(b,m)*spin_integrals(m,a,e,i);  // term 9d
 							}
-							for (int n = 0; n < p.Nelec; ++n){
-								tdnew(a,b,i,j) += 0.5*get_tau(a,b,m,n)*Wmnij(m,n,i,j);
+							for (int n = 0; n < p.n_occupied; ++n){
+								t2_next(a,b,i,j) += 0.5*get_tau(a,b,m,n)*W_mnij(m,n,i,j);  // term 10: tau·W_mnij
 							}
 						}
-						tdnew(a,b,i,j) /= Dabij(a,b,i,j);
+						t2_next(a,b,i,j) /= denom_abij(a,b,i,j);
 					}
 				}
 			}
@@ -537,11 +548,11 @@ double CcsdSolver::ccsdenergy() const { // Equation (134) and (173); Expression 
 	// DOI: 10.1002/9780470125915.ch2
 	// computes CCSD energy given T1 and T2
 	double ECCSD = 0.0;
-	for (int i = 0; i < p.Nelec; ++i){
-		for (int a = p.Nelec; a < dim2; ++a){
-			for (int j = 0; j < p.Nelec; ++j){
-				for (int b = p.Nelec; b < dim2; ++b){
-					ECCSD += 0.25*spinints(i,j,a,b)*td(a,b,i,j) + 0.5*spinints(i,j,a,b)* ts(a,i) * ts(b,j);
+	for (int i = 0; i < p.n_occupied; ++i){
+		for (int a = p.n_occupied; a < n_spin_orbitals; ++a){
+			for (int j = 0; j < p.n_occupied; ++j){
+				for (int b = p.n_occupied; b < n_spin_orbitals; ++b){
+					ECCSD += 0.25*spin_integrals(i,j,a,b)*t2(a,b,i,j) + 0.5*spin_integrals(i,j,a,b)* t1(a,i) * t1(b,j);
 				}
 			}
 		}
@@ -572,17 +583,17 @@ void CcsdSolver::run() {
 	}
 
 
-	while (cc_en_diff>10E-9) { // arbitrary convergence criteria
+	while (cc_en_diff > ccsd::constants::convergence_threshold) { // convergence threshold = 10e-9
 		cc_en_pre = cc_en;
  		update_intermediates();
 		makeT1_s();
 		makeT2_d();
 
-		ccsd::mpi::bcast(tdnew, rank_master);
-		ccsd::mpi::bcast(tsnew, rank_master);
+		ccsd::mpi::bcast(t2_next, rank_master);
+		ccsd::mpi::bcast(t1_next, rank_master);
 
-		td=tdnew;
-		ts=tsnew;
+		t2=t2_next;
+		t1=t1_next;
 
 		if (mpi.rank==rank_master){
 			cc_en = ccsdenergy();
@@ -596,7 +607,7 @@ void CcsdSolver::run() {
 
 	if (mpi.rank==rank_master){
 		std::cout<<"  E(corr,CCSD) = "<< cc_en<<std::endl;
-		std::cout<<"  E(CCSD) = "<< cc_en + p.ENUC + p.EN<<std::endl;
+		std::cout<<"  E(CCSD) = "<< cc_en + p.nuclear_repulsion + p.hf_energy<<std::endl;
 	}
 }
 //=============================================================================
