@@ -21,7 +21,7 @@ foreach(NP 2 4 8)
                 $<TARGET_FILE:ccsd_code>
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(ccsd_test_np${NP}_execution PROPERTIES
-        TIMEOUT 60 LABELS "execution")
+        TIMEOUT 60 LABELS "integration;execution")
 
     add_test(
         NAME ccsd_test_np${NP}_validation
@@ -31,7 +31,7 @@ foreach(NP 2 4 8)
     set_tests_properties(ccsd_test_np${NP}_validation PROPERTIES
         PASS_REGULAR_EXPRESSION
             "E\\(corr,CCSD\\) = ${EXPECTED_ECORR}.*E\\(CCSD\\) = ${EXPECTED_ECCSD}"
-        TIMEOUT 60 LABELS "validation")
+        TIMEOUT 60 LABELS "integration;validation")
 endforeach()
 
 find_package(Python3 COMPONENTS Interpreter)
@@ -43,7 +43,7 @@ if(Python3_FOUND)
                 --executable $<TARGET_FILE:ccsd_code>
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(ccsd_python_regression PROPERTIES
-        TIMEOUT 120 LABELS "regression")
+        TIMEOUT 120 LABELS "integration;regression")
 endif()
 
 # ── Unit tests (Catch2) ───────────────────────────────────────────────────────
@@ -52,14 +52,14 @@ function(ccsd_unit_test NAME)
     target_link_libraries(${NAME} PRIVATE
         ccsd_core Catch2::Catch2WithMain)
     ccsd_apply_flags(${NAME})
-    catch_discover_tests(${NAME})
+    catch_discover_tests(${NAME} PROPERTIES LABELS "unit")
 endfunction()
 
 # test_tensors always needs the mdspan include path (for the smoke test)
 add_executable(test_tensors test_tensors.cpp)
 target_link_libraries(test_tensors PRIVATE ccsd_core Catch2::Catch2WithMain ccsd::mdspan)
 ccsd_apply_flags(test_tensors)
-catch_discover_tests(test_tensors)
+catch_discover_tests(test_tensors PROPERTIES LABELS "unit")
 ccsd_unit_test(test_parameters)
 ccsd_unit_test(test_timer)
 ccsd_unit_test(test_timing)

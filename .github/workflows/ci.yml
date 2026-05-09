@@ -44,9 +44,9 @@ jobs:
         run: cmake --preset asan
       - name: Build
         run: cmake --build --preset asan
-      - name: Unit tests
-        run: ctest --preset asan
-      - name: Bit-exact regression (np=2 only under sanitizers)
+      - name: Unit tests (sanitizer-safe only — MPI tests excluded under ASan)
+        run: ctest --preset asan -L unit
+      - name: Bit-exact regression (np=2; ASan+MPI requires small rank count)
         run: python3 tests/run_mpi_regression.py \
                 --executable build/asan/apps/ccsd_code --np 2
 
