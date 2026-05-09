@@ -27,6 +27,12 @@ public:
     double hf_energy         = 0.0;
     std::map<double, double> two_electron_mos;
 
+    // Constructs with all fields at their zero-defaults — no file is loaded.
+    // Use this only when populating fields programmatically (e.g., unit tests).
+    // Call validate() before passing to any kernel.
+    struct direct_init {};
+    explicit CcsdConfig(direct_init) noexcept {}
+
     explicit CcsdConfig(const std::string& path = "./config.json") {
         std::ifstream in(path);
         if (!in) throw std::runtime_error("Cannot open " + path);

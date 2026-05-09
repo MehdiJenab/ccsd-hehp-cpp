@@ -37,13 +37,15 @@ public:
     // Compound index hash — public for unit testing.
     [[nodiscard]] static double get_key(double a, double b, double c, double d);
 
+    // Named mathematical intermediates (Stanton eqs. 9–10) — public for unit testing.
+    [[nodiscard]] double tau_tilde(int a, int b, int i, int j) const;  // Stanton eq. (9): τ̃_{abij} = T2 + ½(T1·T1 antisymm)
+    [[nodiscard]] double tau(int a, int b, int i, int j) const;        // Stanton eq. (10): τ_{abij} = T2 + T1·T1 antisymm
+
 private:
     CcsdState& state_;
     const ParameterClass& p_;
 
     [[nodiscard]] double get_value(double a, double b, double c, double d) const;
-    [[nodiscard]] double tau_tilde(int a, int b, int i, int j) const;  // Stanton eq. (9): τ̃_{abij} = T2 + ½(T1·T1 antisymm)
-    [[nodiscard]] double tau(int a, int b, int i, int j) const;        // Stanton eq. (10): τ_{abij} = T2 + T1·T1 antisymm
 };
 
 }  // namespace ccsd
