@@ -1,4 +1,6 @@
-add_library(ccsd_core STATIC ccsd_solver.cpp)
+add_library(ccsd_core STATIC
+    ccsd_solver.cpp
+    ccsd_kernels.cpp)
 
 target_include_directories(ccsd_core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
