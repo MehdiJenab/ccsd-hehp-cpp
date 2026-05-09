@@ -122,7 +122,7 @@ void ccsd::CcsdKernels::build_denominators() { // Make denominator arrays denom_
 //=============================================================================
 
 //=============================================================================
-double ccsd::CcsdKernels::taus(int a, int b, int i, int j) const { // Stanton eq (9)
+double ccsd::CcsdKernels::tau_tilde(int a, int b, int i, int j) const { // Stanton eq (9)
     return state_.t2(a,b,i,j) + 0.5*(state_.t1(a,i)*state_.t1(b,j) - state_.t1(b,i)*state_.t1(a,j));
 }
 //=============================================================================
@@ -144,7 +144,7 @@ void ccsd::CcsdKernels::compute_F_ae() { // Stanton eq (3)
                 for (int f = p_.n_occupied; f < state_.n_spin_orbitals; ++f) {
                     state_.F_ae(a,e) += state_.t1(f,m)*state_.spin_integrals(m,a,f,e);
                     for (int n = 0; n < p_.n_occupied; ++n) {
-                        state_.F_ae(a,e) += -0.5*taus(a,f,m,n)*state_.spin_integrals(m,n,e,f);
+                        state_.F_ae(a,e) += -0.5*tau_tilde(a,f,m,n)*state_.spin_integrals(m,n,e,f);
                     }
                 }
             }
@@ -164,7 +164,7 @@ void ccsd::CcsdKernels::compute_F_mi() { // Stanton eq (4)
                 for (int n = 0; n < p_.n_occupied; ++n) {
                     state_.F_mi(m,i) += state_.t1(e,n)*state_.spin_integrals(m,n,i,e);
                     for (int f = p_.n_occupied; f < state_.n_spin_orbitals; ++f) {
-                        state_.F_mi(m,i) += 0.5*taus(e,f,i,n)*state_.spin_integrals(m,n,e,f);
+                        state_.F_mi(m,i) += 0.5*tau_tilde(e,f,i,n)*state_.spin_integrals(m,n,e,f);
                     }
                 }
             }

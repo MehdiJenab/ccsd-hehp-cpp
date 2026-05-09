@@ -31,12 +31,12 @@ void CcsdSolver::compute_intermediates_distributed(CcsdKernels& kernels) {
 void CcsdSolver::solve_amplitudes_on_master(CcsdKernels& kernels) {
     // Gather F intermediates, then compute T1 on master.
     orchestrator.gather_F_to_master(state_);
-    if (orchestrator.mpi.rank == orchestrator.rank_master)
+    if (orchestrator.mpi.rank == orchestrator.master())
         kernels.compute_t1();
 
     // Gather W intermediates, then compute T2 on master.
     orchestrator.gather_W_to_master(state_);
-    if (orchestrator.mpi.rank == orchestrator.rank_master)
+    if (orchestrator.mpi.rank == orchestrator.master())
         kernels.compute_t2();
 }
 
@@ -46,7 +46,7 @@ void CcsdSolver::run() {
 
     initialization(kernels);
 
-    if (orchestrator.mpi.rank == orchestrator.rank_master)
+    if (orchestrator.mpi.rank == orchestrator.master())
         std::cout << "CCSD in MpiC++" << std::endl;
 
     double cc_en = 0.0, cc_en_pre = 0.0, cc_en_diff = 10.0;
@@ -64,14 +64,14 @@ void CcsdSolver::run() {
         state_.t2 = state_.t2_next;
         state_.t1 = state_.t1_next;
 
-        if (orchestrator.mpi.rank == orchestrator.rank_master) {
+        if (orchestrator.mpi.rank == orchestrator.master()) {
             cc_en = kernels.compute_energy();
             cc_en_diff = std::abs(cc_en - cc_en_pre);
         }
         orchestrator.broadcast_scalar(cc_en_diff);
     }
 
-    if (orchestrator.mpi.rank == orchestrator.rank_master) {
+    if (orchestrator.mpi.rank == orchestrator.master()) {
         std::cout << "  E(corr,CCSD) = " << cc_en << std::endl;
         std::cout << "  E(CCSD) = " << cc_en + p.nuclear_repulsion + p.hf_energy << std::endl;
     }

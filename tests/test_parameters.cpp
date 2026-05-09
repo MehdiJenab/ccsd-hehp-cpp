@@ -17,13 +17,13 @@ const char* kFixture = R"({
 })";
 }  // namespace
 
-TEST_CASE("ParameterClass parses a name-keyed config", "[parameters]") {
+TEST_CASE("CcsdConfig parses a name-keyed config", "[parameters]") {
     const std::string path = "test_config_tmp.json";
     {
         std::ofstream out(path);
         out << kFixture;
     }
-    ParameterClass p(path);
+    ccsd::CcsdConfig p(path);
     REQUIRE(p.n_spatial_orbitals == 2);
     REQUIRE(p.n_occupied == 2);
     REQUIRE(p.orbital_energies[0] == -0.913);

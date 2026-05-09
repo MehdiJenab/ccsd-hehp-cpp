@@ -42,8 +42,8 @@ private:
     const ParameterClass& p_;
 
     [[nodiscard]] double get_value(double a, double b, double c, double d) const;
-    [[nodiscard]] double taus(int a, int b, int i, int j) const;  // Stanton eq. (9)
-    [[nodiscard]] double tau(int a, int b, int i, int j) const;   // Stanton eq. (10)
+    [[nodiscard]] double tau_tilde(int a, int b, int i, int j) const;  // Stanton eq. (9): τ̃_{abij} = T2 + ½(T1·T1 antisymm)
+    [[nodiscard]] double tau(int a, int b, int i, int j) const;        // Stanton eq. (10): τ_{abij} = T2 + T1·T1 antisymm
 };
 
 }  // namespace ccsd

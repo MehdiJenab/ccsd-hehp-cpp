@@ -8,16 +8,26 @@
 
 #include <nlohmann/json.hpp>
 
-class ParameterClass {
+namespace ccsd {
+
+// Molecular Hamiltonian parameters loaded from a JSON config file.
+// JSON key → C++ field mapping:
+//   "dim"          → n_spatial_orbitals
+//   "Nelec"        → n_occupied   (electron count = occupied spin-orbital count)
+//   "orbital_energy" → orbital_energies
+//   "ENUC"         → nuclear_repulsion
+//   "EN"           → hf_energy
+//   "ttmo"         → two_electron_mos
+class CcsdConfig {
 public:
     int n_spatial_orbitals = 0;
-    int n_occupied = 0;   // electron count = number of occupied spin orbitals
+    int n_occupied         = 0;   // electron count = occupied spin-orbital count
     std::vector<double> orbital_energies;
     double nuclear_repulsion = 0.0;
-    double hf_energy = 0.0;
+    double hf_energy         = 0.0;
     std::map<double, double> two_electron_mos;
 
-    explicit ParameterClass(const std::string& path = "./config.json") {
+    explicit CcsdConfig(const std::string& path = "./config.json") {
         std::ifstream in(path);
         if (!in) throw std::runtime_error("Cannot open " + path);
         nlohmann::json j;
@@ -35,17 +45,25 @@ public:
         hf_energy         = j.at("EN").get<double>();
 
         const auto& flat = j.at("ttmo");
-        for (std::size_t i = 0; i + 1 < flat.size(); i += 2) {
+        for (std::size_t i = 0; i + 1 < flat.size(); i += 2)
             two_electron_mos.emplace(flat[i].get<double>(), flat[i + 1].get<double>());
-        }
 
         validate();
     }
 
     void validate() const {
+        if (n_occupied <= 0)
+            throw std::runtime_error("n_occupied must be > 0");
+        if (n_occupied % 2 != 0)
+            throw std::runtime_error("n_occupied must be even (restricted HF)");
         if (n_occupied > 2 * n_spatial_orbitals)
             throw std::runtime_error("n_occupied exceeds 2 * n_spatial_orbitals");
         if (static_cast<int>(orbital_energies.size()) != n_spatial_orbitals)
             throw std::runtime_error("orbital_energies size mismatch");
     }
 };
+
+}  // namespace ccsd
+
+// Backwards-compat alias: existing code uses unqualified ParameterClass.
+using ParameterClass = ccsd::CcsdConfig;
