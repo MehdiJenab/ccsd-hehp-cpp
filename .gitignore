@@ -63,3 +63,4 @@ coverage/
 
 # Per-project Claude local config (machine-specific)
 .claude/settings.local.json
+.worktrees/
