@@ -2,9 +2,8 @@
 
 int main(int argc, char** argv) {
     ccsd::MpiSession session(&argc, &argv);
-    CcsdSolver solver;
-    solver.mpi.size = session.size();
-    solver.mpi.rank = session.rank();
+    ccsd::CcsdSolver solver;
+    solver.attach(session);
     solver.run();
     return 0;
 }

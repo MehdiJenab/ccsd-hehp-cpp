@@ -30,8 +30,7 @@ Args parse_args(int argc, char** argv) {
 }
 
 void attach_session(CcsdSolver& solver, const ccsd::MpiSession& session) {
-    solver.mpi.size = session.size();
-    solver.mpi.rank = session.rank();
+    solver.attach(session);
 }
 
 void run_warmup(const ccsd::MpiSession& session, int k) {

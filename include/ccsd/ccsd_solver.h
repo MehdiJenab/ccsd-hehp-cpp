@@ -1,49 +1,34 @@
-#ifndef CCSD_CCSD_SOLVER_H
-#define CCSD_CCSD_SOLVER_H
+#pragma once
 
-#include <ccsd/mpi_session.h>
+#include <ccsd/ccsd_state.h>
+#include <ccsd/ccsd_kernels.h>
+#include <ccsd/mpi_orchestrator.h>
 #include <ccsd/parameters.h>
-#include <ccsd/tensors.h>
 
+namespace ccsd {
+
+// Coordinates initialization, MPI rank assignment, the CCSD iteration loop,
+// and convergence checking. Owns CcsdState, CcsdKernels, and MpiOrchestrator.
 class CcsdSolver {
 public:
     ParameterClass p;
-    MpiClass mpi;
-    int rank_master = 0;
-    int rank_start = 0;
-    Vector2D Fae, Fmi, Fme, Dai, tsnew, ts, fs;
-    Vector4D Wmnij, Wabef, Wmbej, Dabij, tdnew, td, spinints;
-    int dim2 = 0;
+    MpiOrchestrator orchestrator;
+
+    void attach(const MpiSession& session) {
+        orchestrator.configure(session.size(), session.rank());
+    }
 
     void run();
 
-    // Pure math helper — no member state; accessible for unit testing.
-    [[nodiscard]] static double get_key(double a, double b, double c, double d);
-
 private:
-    void guess_T2();
-    void get_denominator_arrays();
-    [[nodiscard]] double get_value(double a, double b, double c, double d) const;
-    void get_spinints();
-    void get_fs();
-    int update(int i);
-    void get_ranks();
-    void initialization_vectors();
-    void initialization();
-    [[nodiscard]] double get_taus(int a, int b, int i, int j) const;
-    [[nodiscard]] double get_tau(int a, int b, int i, int j) const;
-    void get_Fae();
-    void get_Fmi();
-    void get_Fme();
-    void get_Wmnij();
-    void get_Wabef();
-    void get_Wmbej();
-    void update_intermediates();
-    void sendVec2D(Vector2D& vec2D, int rank_src, int rank_dst);
-    void sendVec4D(Vector4D& vec4D, int rank_src, int rank_dst);
-    void makeT1_s();
-    void makeT2_d();
-    [[nodiscard]] double ccsdenergy() const;
+    CcsdState state_;
+
+    void initialization(CcsdKernels& kernels);
+    void compute_intermediates_distributed(CcsdKernels& kernels);
+    void solve_amplitudes_on_master(CcsdKernels& kernels);
 };
 
-#endif  // CCSD_CCSD_SOLVER_H
+}  // namespace ccsd
+
+// Backwards compat: apps use unqualified CcsdSolver.
+using CcsdSolver = ccsd::CcsdSolver;
