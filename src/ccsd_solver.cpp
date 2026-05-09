@@ -7,21 +7,37 @@
 #include <iostream>
 #include <mpi.h>
 
-using namespace std;
-
 namespace ccsd {
 
 void CcsdSolver::initialization(CcsdKernels& kernels) {
     state_.allocate(2 * p.n_spatial_orbitals);
-
-    orchestrator.rank_master = 0;
-    orchestrator.rank_start  = (orchestrator.mpi.size == 1) ? 0 : 1;
     orchestrator.assign_tensor_owners(state_);
 
     kernels.build_spin_integrals();
     kernels.build_fock_spin();
     kernels.guess_t2();
     kernels.build_denominators();
+}
+
+void CcsdSolver::compute_intermediates_distributed(CcsdKernels& kernels) {
+    if (orchestrator.mpi.rank == state_.F_ae.rank)   kernels.compute_F_ae();
+    if (orchestrator.mpi.rank == state_.F_mi.rank)   kernels.compute_F_mi();
+    if (orchestrator.mpi.rank == state_.F_me.rank)   kernels.compute_F_me();
+    if (orchestrator.mpi.rank == state_.W_mnij.rank) kernels.compute_W_mnij();
+    if (orchestrator.mpi.rank == state_.W_abef.rank) kernels.compute_W_abef();
+    if (orchestrator.mpi.rank == state_.W_mbej.rank) kernels.compute_W_mbej();
+}
+
+void CcsdSolver::solve_amplitudes_on_master(CcsdKernels& kernels) {
+    // Gather F intermediates, then compute T1 on master.
+    orchestrator.gather_F_to_master(state_);
+    if (orchestrator.mpi.rank == orchestrator.rank_master)
+        kernels.compute_t1();
+
+    // Gather W intermediates, then compute T2 on master.
+    orchestrator.gather_W_to_master(state_);
+    if (orchestrator.mpi.rank == orchestrator.rank_master)
+        kernels.compute_t2();
 }
 
 void CcsdSolver::run() {
@@ -41,29 +57,13 @@ void CcsdSolver::run() {
     while (cc_en_diff > constants::convergence_threshold) {
         cc_en_pre = cc_en;
 
-        // Compute intermediates (distributed: all on rank_start)
-        if (orchestrator.mpi.rank == state_.F_ae.rank)   kernels.compute_F_ae();
-        if (orchestrator.mpi.rank == state_.F_mi.rank)   kernels.compute_F_mi();
-        if (orchestrator.mpi.rank == state_.F_me.rank)   kernels.compute_F_me();
-        if (orchestrator.mpi.rank == state_.W_mnij.rank) kernels.compute_W_mnij();
-        if (orchestrator.mpi.rank == state_.W_abef.rank) kernels.compute_W_abef();
-        if (orchestrator.mpi.rank == state_.W_mbej.rank) kernels.compute_W_mbej();
+        compute_intermediates_distributed(kernels);
+        solve_amplitudes_on_master(kernels);
 
-        // Gather and compute T1/T2 on master
-        orchestrator.gather_F_to_master(state_);
-        if (orchestrator.mpi.rank == orchestrator.rank_master)
-            kernels.compute_t1();
-
-        orchestrator.gather_W_to_master(state_);
-        if (orchestrator.mpi.rank == orchestrator.rank_master)
-            kernels.compute_t2();
-
-        // Broadcast updated amplitudes
         orchestrator.broadcast_amplitudes(state_);
         state_.t2 = state_.t2_next;
         state_.t1 = state_.t1_next;
 
-        // Compute energy and check convergence (master only, then broadcast)
         if (orchestrator.mpi.rank == orchestrator.rank_master) {
             cc_en = kernels.compute_energy();
             cc_en_diff = std::abs(cc_en - cc_en_pre);

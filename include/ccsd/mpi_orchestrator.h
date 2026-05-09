@@ -13,6 +13,14 @@ public:
     int rank_master = 0;
     int rank_start = 0;
 
+    // Set MPI size/rank and derive rank_master and rank_start from them.
+    void configure(int size, int rank) {
+        mpi.size    = size;
+        mpi.rank    = rank;
+        rank_master = 0;
+        rank_start  = (size == 1) ? 0 : 1;
+    }
+
     // Assign MPI owner ranks to each intermediate tensor in state.
     // With np=1: all on rank 0. With np>1: all intermediates on rank 1, master is rank 0.
     void assign_tensor_owners(CcsdState& state) const {
@@ -48,9 +56,10 @@ public:
         ccsd::mpi::bcast(state.t1_next, rank_master);
     }
 
-    // Broadcast a scalar double from rank 0 to all ranks.
+    // Broadcast a scalar double from rank_master to all ranks.
+    // ccsd::mpi::bcast only handles Vector2D/4D; scalars go via raw MPI.
     void broadcast_scalar(double& value) const {
-        MPI_Bcast(&value, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&value, 1, MPI_DOUBLE, rank_master, MPI_COMM_WORLD);
     }
 
 private:

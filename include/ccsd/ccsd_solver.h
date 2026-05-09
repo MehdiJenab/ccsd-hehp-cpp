@@ -14,12 +14,18 @@ public:
     ParameterClass p;
     MpiOrchestrator orchestrator;
 
+    void attach(const MpiSession& session) {
+        orchestrator.configure(session.size(), session.rank());
+    }
+
     void run();
 
 private:
     CcsdState state_;
 
     void initialization(CcsdKernels& kernels);
+    void compute_intermediates_distributed(CcsdKernels& kernels);
+    void solve_amplitudes_on_master(CcsdKernels& kernels);
 };
 
 }  // namespace ccsd
