@@ -8,26 +8,26 @@ published by Joshua Goings.
 
 ```
 ccsd-hehp-cpp/
-├── apps/             Executables (ccsd_code, ccsd_bench)
+├── apps/             Executables and the scripts that exercise them
+│   ├── ccsd_code.cpp, ccsd_bench.cpp
+│   ├── run_mpi_regression.py    bit-exact MPI regression (np = 2, 4, 8)
+│   ├── run_bench.sh             benchmark matrix runner
+│   └── plot_or_table.py         benchmark results formatter
 ├── cmake/            CMake modules (warnings, mdspan)
-├── docs/             Documentation and design specs
-│   ├── architecture.md, build.md, usage.md, workflow.md
+├── docs/             Documentation
+│   ├── guides/       architecture.md, build.md, usage.md, workflow.md
 │   ├── benchmarks/   Performance results and raw data
-│   ├── superpowers/  AI-assisted refactor specs and plans
+│   ├── design/       AI-assisted refactor specs and plans
 │   └── Doxyfile
-├── scripts/          Utility scripts (bench runner, plot, config migration)
-├── src/              Source code, organized by feature
-│   ├── tensors/      Vector2D, Vector4D, mdspan adapter
-│   ├── mpi/          MPI session, orchestrator, tensor send/recv
-│   ├── config/       CcsdConfig (JSON loader)
-│   ├── kernels/      CcsdState, CcsdKernels (pure CCSD math)
-│   ├── solver/       CcsdSolver (thin coordinator)
-│   └── timing/       Timer, percentile accumulator
-├── tests/            MPI regression tests (run_mpi_regression.py)
-├── CMakeLists.txt    Top-level build
-├── CMakePresets.json Build presets (debug, release, asan, ...)
-├── Makefile          Convenience wrappers around cmake/ctest
-└── config.json       HeH⁺/STO-3G input data (loaded by ccsd_code at runtime)
+└── src/              Source code, organized by feature
+    ├── tensors/      Vector2D, Vector4D, mdspan adapter
+    ├── mpi/          MPI session, orchestrator, tensor send/recv
+    ├── config/       CcsdConfig (JSON loader)
+    ├── kernels/      CcsdState, CcsdKernels (pure CCSD math)
+    ├── solver/       CcsdSolver (thin coordinator)
+    └── timing/       Timer, percentile accumulator
+
+Root files: CMakeLists.txt, CMakePresets.json, Makefile, README.md, config.json
 ```
 
 Each feature folder under `src/` contains its public header(s), implementation,
@@ -52,7 +52,7 @@ make check
 ```
 
 For other build modes (asan, tsan, coverage, release-fast, PGO, OpenMP, mdspan)
-see `make help` and `docs/build.md`.
+see `make help` and `docs/guides/build.md`.
 
 ## Dependencies
 
@@ -65,10 +65,10 @@ see `make help` and `docs/build.md`.
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md) — module layout and design
-- [`docs/build.md`](docs/build.md) — full build options and presets
-- [`docs/usage.md`](docs/usage.md) — running the solver and bench
-- [`docs/workflow.md`](docs/workflow.md) — development workflow
+- [`docs/guides/architecture.md`](docs/guides/architecture.md) — module layout and design
+- [`docs/guides/build.md`](docs/guides/build.md) — full build options and presets
+- [`docs/guides/usage.md`](docs/guides/usage.md) — running the solver and bench
+- [`docs/guides/workflow.md`](docs/guides/workflow.md) — development workflow
 - [`docs/benchmarks/`](docs/benchmarks/) — performance studies
 
 ## References

@@ -13,7 +13,7 @@ test: build  ## Run unit tests (debug)
 	ctest --preset debug
 
 regression: build  ## Run bit-exact MPI regression
-	python3 tests/run_mpi_regression.py --executable build/debug/apps/ccsd_code
+	python3 apps/run_mpi_regression.py --executable build/debug/apps/ccsd_code
 
 asan:  ## ASan + UBSan
 	cmake --preset asan && cmake --build --preset asan && ctest --preset asan
@@ -34,11 +34,11 @@ format:  ## clang-format in place
 check: format tidy test regression  ## Full quality suite
 
 bench:  ## Run canonical bench matrix and refresh report
-	bash scripts/run_bench.sh
+	bash apps/run_bench.sh
 
 bench-quick:  ## Smaller bench matrix for fast iteration
 	BATCH=200 WARMUP=20 REPETITIONS=1 NP_LIST="2 4" THREADS_LIST="1" \
-	    bash scripts/run_bench.sh
+	    bash apps/run_bench.sh
 
 bench-pgo:  ## Two-stage PGO build + bench
 	rm -rf build/pgo-data
@@ -48,11 +48,11 @@ bench-pgo:  ## Two-stage PGO build + bench
 	mpirun --oversubscribe -np 4 build/release-fast-instrument/ccsd_bench --batch 200 --warmup 20
 	cmake --preset release-fast-pgo
 	cmake --build --preset release-fast-pgo
-	python3 tests/run_mpi_regression.py \
+	python3 apps/run_mpi_regression.py \
 	    --executable build/release-fast-pgo/ccsd_code --tolerance 1e-9
 	PRESETS="release-fast-pgo" NP_LIST="4" THREADS_LIST="1" \
 	    BATCH=1000 WARMUP=50 REPETITIONS=3 \
-	    bash scripts/run_bench.sh
+	    bash apps/run_bench.sh
 
 clean:  ## Remove build directories
 	rm -rf build/

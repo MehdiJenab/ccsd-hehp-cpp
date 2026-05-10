@@ -92,10 +92,6 @@ endif()
 add_subdirectory(src)
 add_subdirectory(apps)
 
-if(BUILD_TESTING)
-    add_subdirectory(tests)
-endif()
-
 # ── Documentation ─────────────────────────────────────────────────────────────
 if(BUILD_DOCUMENTATION)
     find_package(Doxygen OPTIONAL_COMPONENTS dot)

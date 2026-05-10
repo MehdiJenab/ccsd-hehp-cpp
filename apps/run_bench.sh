@@ -49,5 +49,5 @@ json.dump(d, open(p,'w'), indent=2)
     done
 done
 
-python3 scripts/plot_or_table.py "$OUT_DIR" docs/benchmarks/pass-2-results.md
+python3 apps/plot_or_table.py "$OUT_DIR" docs/benchmarks/pass-2-results.md
 echo "Wrote docs/benchmarks/pass-2-results.md"
