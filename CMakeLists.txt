@@ -100,7 +100,7 @@ endif()
 if(BUILD_DOCUMENTATION)
     find_package(Doxygen OPTIONAL_COMPONENTS dot)
     if(DOXYGEN_FOUND)
-        configure_file(${CMAKE_SOURCE_DIR}/Doxyfile
+        configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile
                        ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
         file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/docs)
         add_custom_target(docs

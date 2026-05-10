@@ -23,7 +23,7 @@ tsan:  ## TSan
 
 coverage:  ## Coverage build + gcovr
 	cmake --preset coverage && cmake --build --preset coverage && ctest --preset coverage
-	gcovr --root . --filter 'src/' --filter 'include/' --txt --print-summary --object-directory build/coverage || true
+	gcovr --root . --filter 'src/' --txt --print-summary --object-directory build/coverage || true
 
 tidy:  ## clang-tidy on staged-able sources
 	clang-tidy -p build/debug $$(git ls-files '*.cpp' '*.hpp' '*.h' | grep -v '^build')
@@ -34,11 +34,11 @@ format:  ## clang-format in place
 check: format tidy test regression  ## Full quality suite
 
 bench:  ## Run canonical bench matrix and refresh report
-	bash benchmarks/run_bench.sh
+	bash scripts/run_bench.sh
 
 bench-quick:  ## Smaller bench matrix for fast iteration
 	BATCH=200 WARMUP=20 REPETITIONS=1 NP_LIST="2 4" THREADS_LIST="1" \
-	    bash benchmarks/run_bench.sh
+	    bash scripts/run_bench.sh
 
 bench-pgo:  ## Two-stage PGO build + bench
 	rm -rf build/pgo-data
@@ -52,7 +52,7 @@ bench-pgo:  ## Two-stage PGO build + bench
 	    --executable build/release-fast-pgo/ccsd_code --tolerance 1e-9
 	PRESETS="release-fast-pgo" NP_LIST="4" THREADS_LIST="1" \
 	    BATCH=1000 WARMUP=50 REPETITIONS=3 \
-	    bash benchmarks/run_bench.sh
+	    bash scripts/run_bench.sh
 
 clean:  ## Remove build directories
 	rm -rf build/

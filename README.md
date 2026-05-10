@@ -1,149 +1,88 @@
 # CCSD in C++ with MPI Parallelization
 
-This repository provides a C++ implementation of Coupled Cluster with Singles
-and Doubles (CCSD) for the HeH⁺ molecule, translated from the educational Python
-code published by Joshua Goings. The translation mirrors the mathematical
-structure and loop ordering of the reference so that numerical comparisons are
-straightforward.
-
-For pass-2 performance numbers and methodology, see
-[docs/benchmarks/pass-2-results.md](docs/benchmarks/pass-2-results.md) and
-[docs/benchmarks/methodology.md](docs/benchmarks/methodology.md).
-
-## References
-
-- T. Daniel Crawford and Henry F. Schaefer III, “An introduction to coupled
-  cluster theory for computational chemists,” *Reviews in Computational
-  Chemistry*, vol. 14, pp. 33–136, 2007.
-- J. Goings, “Coupled Cluster with Singles and Doubles (CCSD) in Python,”
-  https://joshuagoings.com/2013/07/17/coupled-cluster-with-singles-and-doubles-ccsd-in-python/
-
-## Overview
-
-The code computes CCSD correlation energies for HeH⁺ using:
-
-- Custom 2D/4D tensor containers
-- JSON input via Jansson (optional)
-- MPI parallelization through OpenMPI
-- A direct, readable transcription of the CCSD amplitude equations
+A C++23 implementation of Coupled Cluster with Singles and Doubles (CCSD) for
+the HeH⁺ molecule, translated and modernized from the educational Python code
+published by Joshua Goings.
 
 ## Repository Structure
 
-- `ccsd_code.cpp`
-- `ParameterClass.h`, `ParameterClass_NoJson.h`, `VectorsClass.h`, `MpiClass.h`
-- `config.json`
-- `tests/run_mpi_regression.py`
-- Build tooling: `Makefile`, `CMakeLists.txt`
+```
+ccsd-hehp-cpp/
+├── apps/             Executables (ccsd_code, ccsd_bench)
+├── cmake/            CMake modules (warnings, mdspan)
+├── docs/             Documentation and design specs
+│   ├── architecture.md, build.md, usage.md, workflow.md
+│   ├── benchmarks/   Performance results and raw data
+│   ├── superpowers/  AI-assisted refactor specs and plans
+│   └── Doxyfile
+├── scripts/          Utility scripts (bench runner, plot, config migration)
+├── src/              Source code, organized by feature
+│   ├── tensors/      Vector2D, Vector4D, mdspan adapter
+│   ├── mpi/          MPI session, orchestrator, tensor send/recv
+│   ├── config/       CcsdConfig (JSON loader)
+│   ├── kernels/      CcsdState, CcsdKernels (pure CCSD math)
+│   ├── solver/       CcsdSolver (thin coordinator)
+│   └── timing/       Timer, percentile accumulator
+├── tests/            MPI regression tests (run_mpi_regression.py)
+├── CMakeLists.txt    Top-level build
+├── CMakePresets.json Build presets (debug, release, asan, ...)
+├── Makefile          Convenience wrappers around cmake/ctest
+└── config.json       HeH⁺/STO-3G input data (loaded by ccsd_code at runtime)
+```
+
+Each feature folder under `src/` contains its public header(s), implementation,
+and co-located unit tests in `tests/`. Public APIs live at the feature root;
+internal helpers live in `detail/` subfolders. Cross-feature includes use the
+form `#include <feature/header.h>`, making dependency direction explicit.
+
+## Quick Start
+
+```bash
+# Configure + build (debug preset, default)
+make build
+
+# Run unit tests (Catch2)
+make test
+
+# Run bit-exact MPI regression (np = 2, 4, 8)
+make regression
+
+# Run the full quality suite (format + tidy + tests + regression)
+make check
+```
+
+For other build modes (asan, tsan, coverage, release-fast, PGO, OpenMP, mdspan)
+see `make help` and `docs/build.md`.
 
 ## Dependencies
 
-- C++17-capable compiler
-- OpenMPI (provides `mpic++`, `mpirun`)
-- [Jansson](https://digip.org/jansson/) (only when `USE_JSON` is enabled)
-- CMake ≥ 3.12 (if using the CMake workflow)
- - Python 3 (optional, for regression script)
+- C++23 compiler (GCC ≥ 13 or Clang ≥ 17)
+- CMake ≥ 3.21
+- OpenMPI (`mpic++`, `mpirun`)
+- Python 3 (optional, for the regression script and benchmark plotting)
+- nlohmann/json — fetched automatically via CMake FetchContent
+- Catch2 — fetched automatically via CMake FetchContent
 
-## Build Options
+## Documentation
 
-Two build systems are available; both expose similar configuration knobs so you
-can pick the one that best fits your workflow.
+- [`docs/architecture.md`](docs/architecture.md) — module layout and design
+- [`docs/build.md`](docs/build.md) — full build options and presets
+- [`docs/usage.md`](docs/usage.md) — running the solver and bench
+- [`docs/workflow.md`](docs/workflow.md) — development workflow
+- [`docs/benchmarks/`](docs/benchmarks/) — performance studies
 
-### Quick Start
+## References
 
-```
-# Make
-make
-
-# or CMake (out-of-source)
-cmake -S . -B build
-cmake --build build
-```
-
-### Makefile workflow
-
-- `make` builds `ccsd_code` with JSON support.
-- `make run` launches `mpirun --oversubscribe -np 4 ./ccsd_code`.
-- `make test` runs the Python regression script (see below).
-- `make clean` removes the executable.
-
-Override toolchain/flags as needed:
-
-```
-make CXX=mpicxx CXXFLAGS="-O3 -std=c++20" USE_JSON=0
-```
-
-Setting `USE_JSON=0` omits the `-ljansson` link; useful if you temporarily build
-against `ParameterClass_NoJson.h`.
-
-### CMake workflow
-
-```
-cmake -S . -B build -DUSE_JSON=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-```
-
-Key cache variables:
-
-- `USE_JSON` (ON by default) – links against Jansson and defines `USE_JSON`.
-- `BUILD_TESTING` (ON by default) – enables `ctest` integration and copies
-  `config.json` plus extra input files to the build directory.
-- Standard CMake knobs such as `CMAKE_CXX_COMPILER`, `CMAKE_CXX_FLAGS`, and
-  `CMAKE_BUILD_TYPE` behave as usual. Example:
-
-```
-cmake -S . -B build -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_BUILD_TYPE=Debug -DUSE_JSON=OFF
-cmake --build build --target ccsd_code
-```
-
-After configuring, run tests via:
-
-```
-cmake --build build
-cd build && ctest
-```
-
-CMake defines execution/validation tests for multiple MPI sizes, optionally
-oversubscribes when cores are scarce, and can run the Python regression script
-if Python is available.
-
-## Running
-
-```
-mpirun -np 4 ./ccsd_code
-```
-
-On machines with fewer slots than requested ranks, pass `--oversubscribe` so
-OpenMPI allows the extra processes.
-
-## Automated Testing
-
-```
-python3 tests/run_mpi_regression.py
-# or
-make test
-# or
-(cd build && ctest)    # after configuring with CMake
-```
-
-The regression script and the CTest configuration both run the executable with
-multiple process counts (2, 4, 8 by default), using `--oversubscribe` to keep
-the tests portable. They assert that the reported correlation and total energies
-match the established reference values; command-line arguments (`--np`,
-`--executable`, `--tol`, etc.) let you customize the checks.
-
-## Input Format (`config.json`)
-
-```
-{
-    "dim": ...,
-    "Nelec": ...,
-    "orbital_energy": [...],
-    "ENUC": ...,
-    "EN": ...,
-    "integrals": [[i,j,k,l,value], ...]
-}
-```
+- T. Daniel Crawford and Henry F. Schaefer III, "An introduction to coupled
+  cluster theory for computational chemists," *Reviews in Computational
+  Chemistry*, vol. 14, pp. 33–136, 2007.
+- J. F. Stanton, J. Gauss, J. D. Watts, R. J. Bartlett, "A direct product
+  decomposition approach for symmetry exploitation in many-body methods,"
+  *J. Chem. Phys.* 94, 4334 (1991) — equations (1)–(10) implemented in
+  `src/kernels/ccsd_kernels.cpp`.
+- J. Goings, "Coupled Cluster with Singles and Doubles (CCSD) in Python,"
+  https://joshuagoings.com/2013/07/17/coupled-cluster-with-singles-and-doubles-ccsd-in-python/
 
 ## License
 
-Original C++ translation. Does not include Python code. MIT License.
+MIT License.
