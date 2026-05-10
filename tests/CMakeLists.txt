@@ -1,12 +1,3 @@
-include(FetchContent)
-FetchContent_Declare(
-    Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG        v3.5.4)
-FetchContent_MakeAvailable(Catch2)
-list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
-include(Catch)
-
 # ── Integration / MPI tests ───────────────────────────────────────────────────
 set(EXPECTED_ECORR "-0.008225832259")
 set(EXPECTED_ECCSD "-2.862598243")
@@ -45,30 +36,3 @@ if(Python3_FOUND)
     set_tests_properties(ccsd_python_regression PROPERTIES
         TIMEOUT 120 LABELS "integration;regression")
 endif()
-
-# ── Unit tests (Catch2) ───────────────────────────────────────────────────────
-function(ccsd_unit_test NAME)
-    add_executable(${NAME} ${NAME}.cpp)
-    target_link_libraries(${NAME} PRIVATE
-        ccsd_core Catch2::Catch2WithMain)
-    ccsd_apply_flags(${NAME})
-    catch_discover_tests(${NAME} PROPERTIES LABELS "unit")
-endfunction()
-
-# test_tensors always needs the mdspan include path (for the smoke test)
-add_executable(test_tensors test_tensors.cpp)
-target_link_libraries(test_tensors PRIVATE ccsd_core Catch2::Catch2WithMain ccsd::mdspan)
-ccsd_apply_flags(test_tensors)
-catch_discover_tests(test_tensors PROPERTIES LABELS "unit")
-ccsd_unit_test(test_parameters)
-ccsd_unit_test(test_timer)
-ccsd_unit_test(test_timing)
-ccsd_unit_test(test_math_helpers)
-
-# test_kernels needs WORKING_DIRECTORY for the HeH+ integration test (config.json lookup).
-add_executable(test_kernels test_kernels.cpp)
-target_link_libraries(test_kernels PRIVATE ccsd_core Catch2::Catch2WithMain)
-ccsd_apply_flags(test_kernels)
-catch_discover_tests(test_kernels
-    PROPERTIES LABELS "unit"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

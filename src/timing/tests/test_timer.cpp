@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <ccsd/timer.h>
+#include <timing/timer.h>
 
 #include <chrono>
 #include <thread>

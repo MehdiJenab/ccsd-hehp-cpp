@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include <ccsd/ccsd_kernels.h>
-#include <ccsd/ccsd_state.h>
-#include <ccsd/ccsd_constants.h>
-#include <ccsd/parameters.h>
+#include <kernels/ccsd_kernels.h>
+#include <kernels/ccsd_state.h>
+#include <kernels/ccsd_constants.h>
+#include <config/ccsd_config.h>
 
 using Catch::Approx;
 

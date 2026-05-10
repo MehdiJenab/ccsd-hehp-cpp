@@ -1,5 +1,4 @@
-#ifndef CCSD_TIMING_HPP
-#define CCSD_TIMING_HPP
+#pragma once
 
 #include <algorithm>
 #include <chrono>
@@ -80,5 +79,3 @@ private:
 };
 
 }  // namespace ccsd::timing
-
-#endif  // CCSD_TIMING_HPP

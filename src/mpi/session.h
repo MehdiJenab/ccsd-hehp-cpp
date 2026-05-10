@@ -1,5 +1,4 @@
-#ifndef MpiClass_Included
-#define MpiClass_Included
+#pragma once
 
 #include <mpi.h>
 
@@ -36,5 +35,3 @@ public:
     int size = 0;
     int rank = 0;
 };
-
-#endif  // MpiClass_Included

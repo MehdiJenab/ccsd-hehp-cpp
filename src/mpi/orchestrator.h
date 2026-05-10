@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ccsd/ccsd_state.h>
-#include <ccsd/mpi_session.h>
-#include <ccsd/mpi_tensor.h>
+#include <kernels/ccsd_state.h>
+#include <mpi/session.h>
+#include <mpi/tensor_ops.h>
 
 namespace ccsd {
 

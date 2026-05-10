@@ -4,7 +4,7 @@
 #include <fstream>
 #include <string>
 
-#include <ccsd/parameters.h>
+#include <config/ccsd_config.h>
 
 namespace {
 const char* kFixture = R"({

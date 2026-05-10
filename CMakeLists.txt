@@ -78,12 +78,21 @@ FetchContent_Declare(nlohmann_json
     GIT_TAG v3.11.3)
 FetchContent_MakeAvailable(nlohmann_json)
 
+if(BUILD_TESTING)
+    enable_testing()
+    FetchContent_Declare(Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG v3.5.4)
+    FetchContent_MakeAvailable(Catch2)
+    list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+    include(Catch)
+endif()
+
 # ── Build tree ────────────────────────────────────────────────────────────────
 add_subdirectory(src)
 add_subdirectory(apps)
 
 if(BUILD_TESTING)
-    enable_testing()
     add_subdirectory(tests)
 endif()
 
