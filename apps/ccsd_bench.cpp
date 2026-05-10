@@ -1,5 +1,5 @@
-#include <ccsd/ccsd_solver.h>
-#include <ccsd/timing.h>
+#include <solver/ccsd_solver.h>
+#include <timing/percentile.h>
 
 #include <cstdio>
 #include <cstdlib>

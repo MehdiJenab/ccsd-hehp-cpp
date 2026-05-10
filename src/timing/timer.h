@@ -1,5 +1,4 @@
-#ifndef CCSD_TIMER_H
-#define CCSD_TIMER_H
+#pragma once
 
 #include <chrono>
 #include <cstdio>
@@ -25,5 +24,3 @@ struct Timer {
 };
 
 }  // namespace ccsd
-
-#endif  // CCSD_TIMER_H

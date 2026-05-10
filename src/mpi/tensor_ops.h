@@ -1,8 +1,9 @@
 #pragma once
 
 #include <mpi.h>
-#include <ccsd/tensors.h>
-#include <ccsd/ccsd_constants.h>
+#include <tensors/vector_2d.h>
+#include <tensors/vector_4d.h>
+#include <kernels/ccsd_constants.h>
 
 namespace ccsd::mpi {
 

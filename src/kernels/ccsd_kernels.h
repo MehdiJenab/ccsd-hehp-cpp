@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ccsd/ccsd_state.h>
-#include <ccsd/parameters.h>
+#include <kernels/ccsd_state.h>
+#include <config/ccsd_config.h>
 
 namespace ccsd {
 

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <ccsd/ccsd_state.h>
-#include <ccsd/ccsd_kernels.h>
-#include <ccsd/mpi_orchestrator.h>
-#include <ccsd/parameters.h>
+#include <kernels/ccsd_state.h>
+#include <kernels/ccsd_kernels.h>
+#include <mpi/orchestrator.h>
+#include <config/ccsd_config.h>
 
 namespace ccsd {
 

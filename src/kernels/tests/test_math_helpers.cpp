@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <ccsd/ccsd_kernels.h>
+#include <kernels/ccsd_kernels.h>
 
 // get_key is a pure static function: compound index from 4 doubles.
 // Formula produces a unique upper-triangular pair key such that

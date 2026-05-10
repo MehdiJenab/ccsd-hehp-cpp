@@ -1,4 +1,4 @@
-#include <ccsd/ccsd_solver.h>
+#include <solver/ccsd_solver.h>
 
 int main(int argc, char** argv) {
     ccsd::MpiSession session(&argc, &argv);
