@@ -1,7 +1,7 @@
 #pragma once
 
-#include <tensors/vector_2d.h>
-#include <tensors/vector_4d.h>
+#include <util/tensors/vector_2d.h>
+#include <util/tensors/vector_4d.h>
 
 namespace ccsd {
 

@@ -43,7 +43,7 @@ if(BUILD_TESTING)
         add_test(
             NAME ccsd_python_regression
             COMMAND ${Python3_EXECUTABLE}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/run_mpi_regression.py
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_mpi_regression.py
                     --executable $<TARGET_FILE:ccsd_code>
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
         set_tests_properties(ccsd_python_regression PROPERTIES

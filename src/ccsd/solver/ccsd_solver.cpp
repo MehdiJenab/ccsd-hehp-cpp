@@ -1,7 +1,7 @@
-#include <solver/ccsd_solver.h>
-#include <kernels/ccsd_kernels.h>
-#include <kernels/ccsd_constants.h>
-#include <timing/timer.h>
+#include <ccsd/solver/ccsd_solver.h>
+#include <ccsd/kernels/ccsd_kernels.h>
+#include <ccsd/kernels/ccsd_constants.h>
+#include <util/timing/timer.h>
 
 #include <cmath>
 #include <iostream>

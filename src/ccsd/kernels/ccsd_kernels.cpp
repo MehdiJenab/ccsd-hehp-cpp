@@ -1,4 +1,4 @@
-#include <kernels/ccsd_kernels.h>
+#include <ccsd/kernels/ccsd_kernels.h>
 
 #include <cmath>
 #include <vector>

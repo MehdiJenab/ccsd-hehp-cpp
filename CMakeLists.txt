@@ -11,6 +11,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# ── Flatten binary output so executables always land at <build>/bin/ ──────────
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 # ── Build options ─────────────────────────────────────────────────────────────
 option(BUILD_TESTING        "Build unit and integration tests" ON)
 option(BUILD_DOCUMENTATION  "Build API documentation with Doxygen" ON)
@@ -90,7 +93,6 @@ endif()
 
 # ── Build tree ────────────────────────────────────────────────────────────────
 add_subdirectory(src)
-add_subdirectory(apps)
 
 # ── Documentation ─────────────────────────────────────────────────────────────
 if(BUILD_DOCUMENTATION)

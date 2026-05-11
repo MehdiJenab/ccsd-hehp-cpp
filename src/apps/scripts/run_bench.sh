@@ -17,7 +17,7 @@ for preset in $PRESETS; do
     for np in $NP_LIST; do
         for threads in $THREADS_LIST; do
             for rep in $(seq 1 "$REPETITIONS"); do
-                exe="build/${preset}/ccsd_bench"
+                exe="build/${preset}/bin/ccsd_bench"
                 if [[ ! -x "$exe" ]]; then
                     cmake --preset "$preset" >/dev/null
                     cmake --build --preset "$preset" --target ccsd_bench >/dev/null
@@ -49,5 +49,5 @@ json.dump(d, open(p,'w'), indent=2)
     done
 done
 
-python3 apps/plot_or_table.py "$OUT_DIR" docs/benchmarks/pass-2-results.md
+python3 src/apps/scripts/plot_or_table.py "$OUT_DIR" docs/benchmarks/pass-2-results.md
 echo "Wrote docs/benchmarks/pass-2-results.md"

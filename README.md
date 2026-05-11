@@ -8,32 +8,32 @@ published by Joshua Goings.
 
 ```
 ccsd-hehp-cpp/
-├── apps/             Executables and the scripts that exercise them
-│   ├── ccsd_code.cpp, ccsd_bench.cpp
-│   ├── run_mpi_regression.py    bit-exact MPI regression (np = 2, 4, 8)
-│   ├── run_bench.sh             benchmark matrix runner
-│   └── plot_or_table.py         benchmark results formatter
 ├── cmake/            CMake modules (warnings, mdspan)
 ├── docs/             Documentation
 │   ├── guides/       architecture.md, build.md, usage.md, workflow.md
 │   ├── benchmarks/   Performance results and raw data
 │   ├── design/       AI-assisted refactor specs and plans
 │   └── Doxyfile
-└── src/              Source code, organized by feature
-    ├── tensors/      Vector2D, Vector4D, mdspan adapter
-    ├── mpi/          MPI session, orchestrator, tensor send/recv
-    ├── config/       CcsdConfig (JSON loader)
-    ├── kernels/      CcsdState, CcsdKernels (pure CCSD math)
-    ├── solver/       CcsdSolver (thin coordinator)
-    └── timing/       Timer, percentile accumulator
+└── src/              All source code, organized by layer
+    ├── util/         Generic building blocks (no CCSD knowledge)
+    │   ├── tensors/  Vector2D, Vector4D, mdspan adapter
+    │   └── timing/   Timer, percentile accumulator
+    ├── ccsd/         CCSD-specific code (the science)
+    │   ├── config/   CcsdConfig (JSON loader)
+    │   ├── mpi/      MPI session, orchestrator, tensor send/recv
+    │   ├── kernels/  CcsdState, CcsdKernels (pure CCSD math)
+    │   └── solver/   CcsdSolver (thin coordinator)
+    └── apps/         Entry points
+        ├── ccsd_code.cpp, ccsd_bench.cpp
+        └── scripts/  run_mpi_regression.py, run_bench.sh, plot_or_table.py
 
-Root files: CMakeLists.txt, CMakePresets.json, Makefile, README.md, config.json
+Root scaffolding: CMakeLists.txt, CMakePresets.json, Makefile, README.md, config.json
 ```
 
-Each feature folder under `src/` contains its public header(s), implementation,
-and co-located unit tests in `tests/`. Public APIs live at the feature root;
-internal helpers live in `detail/` subfolders. Cross-feature includes use the
-form `#include <feature/header.h>`, making dependency direction explicit.
+Each feature folder contains its public header(s), implementation, and
+co-located unit tests in `tests/`. Cross-feature includes use the form
+`<layer/feature/header.h>` — making the dependency direction visible at every
+call site (`util/` never includes from `ccsd/`).
 
 ## Quick Start
 
