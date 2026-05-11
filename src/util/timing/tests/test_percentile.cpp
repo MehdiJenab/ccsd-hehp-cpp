@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <timing/percentile.h>
+#include <util/timing/percentile.h>
 
 #include <chrono>
 #include <thread>
